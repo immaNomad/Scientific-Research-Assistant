@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Research Assistant
+Comment=AI-powered research assistant with machine learning optimization
+Exec=python3 launch_gui.py
+Path=/home/mark/Desktop/MiniProjectEmerg
+Icon=applications-science
+Terminal=false
+Categories=Science;Education;Office;
+Keywords=research;AI;papers;machine learning;reinforcement learning;
+StartupNotify=true

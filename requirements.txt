@@ -9,7 +9,7 @@ requests>=2.25.0
 urllib3>=1.26.0
 
 # AI and Language Models
-openai>=1.0.0
+google-generativeai>=0.3.0
 
 # Logging and Utilities
 loguru>=0.6.0

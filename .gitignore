@@ -35,6 +35,9 @@ venv.bak/
 .env.production
 .env.staging
 
+# API Keys Configuration (IMPORTANT - keeps API keys safe)
+config/api_keys.py
+
 # IDE
 .vscode/
 .idea/
