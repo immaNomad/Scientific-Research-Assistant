@@ -1,7 +1,3 @@
-"""
-API Manager to coordinate different literature search APIs
-"""
-
 import asyncio
 from typing import List, Dict, Optional
 from loguru import logger
