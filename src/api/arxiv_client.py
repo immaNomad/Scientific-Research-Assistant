@@ -42,12 +42,8 @@ class ArxivClient:
         
         self.last_request_time = time.time()
     
-    def _build_query(self, 
-                     query: str, 
-                     max_results: int = 20,
-                     sort_by: str = "relevance",
-                     sort_order: str = "descending",
-                     start: int = 0) -> str:
+    def _build_query(self, query: str, max_results: int = 20, sort_by: str = "relevance", 
+                     sort_order: str = "descending", start: int = 0) -> str:
         """Build arXiv API query URL"""
         params = {
             "search_query": query,
@@ -63,25 +59,22 @@ class ArxivClient:
     def _parse_entry(self, entry: Dict) -> ArxivPaper:
         """Parse a single arXiv entry from XML response"""
         try:
-            # Handle single author vs multiple authors
             authors = entry.get("author", [])
             if isinstance(authors, dict):
                 authors = [authors]
             author_names = [author.get("name", "") for author in authors]
             
-            # Extract categories
             categories = entry.get("category", [])
             if isinstance(categories, dict):
                 categories = [categories]
             category_list = [cat.get("@term", "") for cat in categories]
             
-            # Extract DOI if available
             doi = None
             if "arxiv:doi" in entry:
                 doi = entry["arxiv:doi"]["#text"]
             
             return ArxivPaper(
-                id=entry["id"].split("/")[-1],  # Extract ID from URL
+                id=entry["id"].split("/")[-1],
                 title=entry["title"].strip(),
                 authors=author_names,
                 abstract=entry["summary"].strip(),
@@ -96,21 +89,8 @@ class ArxivClient:
             logger.error(f"Error parsing arXiv entry: {e}")
             return None
     
-    async def search(self, 
-                     query: str, 
-                     max_results: int = 20,
-                     sort_by: str = "relevance") -> List[ArxivPaper]:
-        """
-        Search arXiv for papers matching the query
-        
-        Args:
-            query: Search query (supports arXiv query syntax)
-            max_results: Maximum number of results to return
-            sort_by: Sort order ('relevance', 'lastUpdatedDate', 'submittedDate')
-            
-        Returns:
-            List of ArxivPaper objects
-        """
+    async def search(self, query: str, max_results: int = 20, sort_by: str = "relevance") -> List[ArxivPaper]:
+        """Search arXiv for papers matching the query"""
         await self._rate_limit_wait()
         
         url = self._build_query(query, max_results, sort_by)
@@ -125,7 +105,6 @@ class ArxivClient:
                         feed = parsed.get("feed", {})
                         entries = feed.get("entry", [])
                         
-                        # Handle single entry case
                         if isinstance(entries, dict):
                             entries = [entries]
                         
@@ -145,22 +124,8 @@ class ArxivClient:
             logger.error(f"Error querying arXiv: {e}")
             return []
     
-    async def search_by_categories(self, 
-                                   categories: List[str], 
-                                   keywords: str = "",
-                                   max_results: int = 20) -> List[ArxivPaper]:
-        """
-        Search arXiv by specific categories
-        
-        Args:
-            categories: List of arXiv category codes (e.g., ['cs.AI', 'cs.LG'])
-            keywords: Additional keywords to search for
-            max_results: Maximum number of results
-            
-        Returns:
-            List of ArxivPaper objects
-        """
-        # Build category query
+    async def search_by_categories(self, categories: List[str], keywords: str = "", max_results: int = 20) -> List[ArxivPaper]:
+        """Search arXiv by specific categories"""
         cat_query = " OR ".join(f"cat:{cat}" for cat in categories)
         
         if keywords:
@@ -170,24 +135,10 @@ class ArxivClient:
             
         return await self.search(query, max_results)
     
-    async def get_recent_papers(self, 
-                                category: str = "cs.AI", 
-                                days: int = 7,
-                                max_results: int = 20) -> List[ArxivPaper]:
-        """
-        Get recent papers from a specific category
-        
-        Args:
-            category: arXiv category code
-            days: Number of days to look back
-            max_results: Maximum number of results
-            
-        Returns:
-            List of ArxivPaper objects
-        """
+    async def get_recent_papers(self, category: str = "cs.AI", days: int = 7, max_results: int = 20) -> List[ArxivPaper]:
+        """Get recent papers from a specific category"""
         from datetime import datetime, timedelta
         
-        # Calculate date range
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         

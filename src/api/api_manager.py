@@ -1,3 +1,5 @@
+"""API Manager to coordinate different literature search APIs"""
+
 import asyncio
 from typing import List, Dict, Optional
 from loguru import logger
@@ -14,7 +16,6 @@ class APIManager:
         self.semantic_scholar_client = SemanticScholarClient()
         self.pubmed_client = PubMedClient()
         
-        # Track API health and rate limits
         self.api_status = {
             'arxiv': {'available': True, 'last_error': None},
             'semantic_scholar': {'available': True, 'last_error': None},
@@ -25,35 +26,27 @@ class APIManager:
                                 query: str, 
                                 sources: List[str] = None,
                                 max_results_per_source: int = 20) -> Dict:
-        """
-        Search all available sources in parallel
-        
-        Args:
-            query: Search query
-            sources: List of sources to search (default: all)
-            max_results_per_source: Maximum results per source
-            
-        Returns:
-            Dictionary with results from each source
-        """
+        """Search all available sources in parallel"""
         if sources is None:
-            sources = ['arxiv', 'semantic_scholar']  # Default sources
+            sources = ['arxiv', 'pubmed', 'semantic_scholar']
         
         tasks = []
         
         if 'arxiv' in sources and self.api_status['arxiv']['available']:
             tasks.append(self._search_arxiv_safe(query, max_results_per_source))
         
-        if 'semantic_scholar' in sources and self.api_status['semantic_scholar']['available']:
-            tasks.append(self._search_semantic_scholar_safe(query, max_results_per_source))
-        
         if 'pubmed' in sources and self.api_status['pubmed']['available']:
             tasks.append(self._search_pubmed_safe(query, max_results_per_source))
         
-        # Execute searches in parallel
+        if 'semantic_scholar' in sources and self.api_status['semantic_scholar']['available']:
+            tasks.append(self._search_semantic_scholar_safe(query, max_results_per_source))
+        
+        # Add small delay between API calls to avoid rate limiting
+        if len(tasks) > 1:
+            await asyncio.sleep(0.5)
+        
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Combine results
         combined_results = {
             'arxiv': [],
             'semantic_scholar': [],
@@ -114,7 +107,6 @@ class APIManager:
                 self.api_status[source]['available'] = True
                 self.api_status[source]['last_error'] = None
         else:
-            # Reset all
             for api in self.api_status:
                 self.api_status[api]['available'] = True
-                self.api_status[api]['last_error'] = None 
+                self.api_status[api]['last_error'] = None
