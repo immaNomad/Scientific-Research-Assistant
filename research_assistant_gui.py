@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import asyncio
 import threading
-import sys
-import os
+import sys, os
 import json
 from datetime import datetime
 from typing import Optional
@@ -22,12 +21,19 @@ except ImportError:
     print("Copy config/api_keys.example.py to config/api_keys.py and add your API key")
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
 try:
     from rl.rl_optimizer import RLEnhancedRAG, ResearchAnalysis
-except ImportError:
-    print("Error: Could not import RL modules. Please ensure src/rl/rl_optimizer.py exists.")
+except ImportError as e:
+    print("\nError: Could not import RL modules. Please ensure src/rl/rl_optimizer.py exists and the folder structure is correct.")
+    print("Troubleshooting tips:")
+    print("- Run this script from the project root directory (where 'src' is a subfolder).\n  Example: cd path_to_project && python launch_gui.py")
+    print("- Do not move or rename the 'src' folder.")
+    print("- If you are on Windows, use Command Prompt or PowerShell, not IDLE.")
+    print(f"- Detailed error: {e}\n")
     sys.exit(1)
 
 # Klein Blue color palette

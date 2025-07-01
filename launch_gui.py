@@ -18,7 +18,7 @@ def main():
     # Set up API keys from centralized config
     try:
         sys.path.append(script_dir)  # Add current directory to path
-        from config.api_keys import GOOGLE_GEMINI_API_KEY
+        from config.api_key import GOOGLE_GEMINI_API_KEY
         if GOOGLE_GEMINI_API_KEY:
             os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_GEMINI_API_KEY
             print("✅ API key loaded from config/api_keys.py")

@@ -5,7 +5,7 @@ from loguru import logger
 import json
 from datetime import datetime
 
-from src.api import ArxivClient, SemanticScholarClient
+from src.api import ArxivClient, SemanticScholarClient, PubMedClient
 from src.models.embeddings import EmbeddingManager, VectorStore, DocumentChunker
 from src.models.llm_client import llm_manager, LLMResponse
 from config.config import config
@@ -43,6 +43,7 @@ class RAGPipeline:
         # Initialize API clients
         self.arxiv_client = ArxivClient()
         self.semantic_scholar_client = SemanticScholarClient()
+        self.pubmed_client = PubMedClient()
         
         # Initialize models
         self.embedding_manager = EmbeddingManager()
@@ -70,7 +71,7 @@ class RAGPipeline:
             List of unified search results
         """
         if sources is None:
-            sources = ['arxiv', 'semantic_scholar']  # Default sources
+            sources = ['arxiv', 'pubmed', 'semantic_scholar']  # Default sources
         
         logger.info(f"Searching literature for query: '{query}' in sources: {sources}")
         
@@ -79,6 +80,9 @@ class RAGPipeline:
         
         if 'arxiv' in sources:
             tasks.append(self._search_arxiv(query, max_results_per_source))
+        
+        if 'pubmed' in sources:
+            tasks.append(self._search_pubmed(query, max_results_per_source))
         
         if 'semantic_scholar' in sources:
             tasks.append(self._search_semantic_scholar(query, max_results_per_source))
@@ -127,6 +131,31 @@ class RAGPipeline:
             logger.error(f"Error searching arXiv: {e}")
             return []
     
+    async def _search_pubmed(self, query: str, max_results: int) -> List[SearchResult]:
+        """Search PubMed and convert to unified format"""
+        try:
+            papers = await self.pubmed_client.search(query, max_results)
+            results = []
+            
+            for paper in papers:
+                result = SearchResult(
+                    id=paper.id,
+                    title=paper.title,
+                    authors=paper.authors,
+                    abstract=paper.abstract,
+                    source='pubmed',
+                    url=f"https://pubmed.ncbi.nlm.nih.gov/{paper.pmid}/" if paper.pmid else "",
+                    published_date=paper.published_date,
+                    venue=paper.journal,
+                    doi=paper.doi
+                )
+                results.append(result)
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error searching PubMed: {e}")
+            return []
+
     async def _search_semantic_scholar(self, query: str, max_results: int) -> List[SearchResult]:
         """Search Semantic Scholar and convert to unified format"""
         try:
