@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Research Assistant - Desktop GUI Application
-Beautiful chatbox interface with white background and Klein Blue accents
-Features: RAG (Retrieval-Augmented Generation) + RL (Reinforcement Learning) optimization
-"""
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import asyncio
@@ -32,16 +25,24 @@ except ImportError:
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 try:
-    from src.rl.rl_optimizer import RLEnhancedRAG, ResearchAnalysis
+    from rl.rl_optimizer import RLEnhancedRAG, ResearchAnalysis
 except ImportError:
     print("Error: Could not import RL modules. Please ensure src/rl/rl_optimizer.py exists.")
     sys.exit(1)
 
-# Klein Blue color palette
+# Klein Blue color palette with warm backgrounds
 KLEIN_BLUE = "#002FA7"
 LIGHT_KLEIN_BLUE = "#4D7FBF"
 ULTRA_LIGHT_KLEIN_BLUE = "#E6EFFF"
 WHITE = "#FFFFFF"
+
+# Warm background colors
+WARM_WHITE = "#FEFDF8"          # Soft warm white
+CREAM = "#FAF7F0"               # Light cream background
+WARM_BEIGE = "#F7F4ED"          # Warm beige for containers
+SOFT_PEARL = "#F9F7F1"          # Pearl white with warmth
+WARM_GRAY = "#F2F0EB"           # Warm light gray
+
 LIGHT_GRAY = "#F5F5F5"
 DARK_GRAY = "#333333"
 SUCCESS_GREEN = "#00C851"
@@ -71,15 +72,14 @@ class ResearchAssistantGUI:
         self.create_widgets()
         self.initialize_rl_system()
         
-        # Start with welcome message
-        self.add_system_message("Welcome to Scientific Research Assistant!")
-        self.add_system_message("Ask me anything about research papers and I'll learn to optimize my responses!")
+        # Track if first search has been made
+        self.first_search_done = False
     
     def setup_window(self):
         """Configure the main window"""
         self.root.title("Scientific Research Assistant")
         self.root.geometry("1200x800")
-        self.root.configure(bg=WHITE)
+        self.root.configure(bg=WARM_WHITE)  # Warm background instead of stark white
         
         # Set minimum size
         self.root.minsize(800, 600)
@@ -114,18 +114,18 @@ class ResearchAssistantGUI:
         
         # Configure frame styles
         self.style.configure("Klein.TFrame",
-                           background=WHITE,
+                           background=CREAM,  # Warm cream background
                            relief="solid",
                            borderwidth=1)
         
         # Configure label styles
         self.style.configure("Title.TLabel",
-                           background=WHITE,
+                           background=CREAM,  # Warm cream background
                            foreground=KLEIN_BLUE,
                            font=("Lucida Sans", 18, "bold"))
         
         self.style.configure("Subtitle.TLabel",
-                           background=WHITE,
+                           background=CREAM,  # Warm cream background
                            foreground=DARK_GRAY,
                            font=("Lucida Sans", 12))
         
@@ -138,50 +138,120 @@ class ResearchAssistantGUI:
     def create_widgets(self):
         """Create and arrange GUI widgets"""
         
-        # Main container with Klein Blue border
-        main_frame = tk.Frame(self.root, bg=WHITE, relief="solid", bd=2, highlightbackground=KLEIN_BLUE, highlightthickness=2)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main container - seamless warm background
+        main_frame = tk.Frame(self.root, bg=WARM_WHITE)
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Main content area
-        content_frame = tk.Frame(main_frame, bg=WHITE)
-        content_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        # Main content area with cream background
+        content_frame = tk.Frame(main_frame, bg=CREAM)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Left panel (chat)
-        self.create_chat_panel(content_frame)
-        
-        # Right panel (info and controls)
+        # Left panel (info and controls)
         self.create_info_panel(content_frame)
         
-        # Bottom Klein Blue separator
-        bottom_sep = tk.Frame(main_frame, height=2, bg=KLEIN_BLUE)
-        bottom_sep.pack(fill=tk.X, pady=(10, 5))
+        # Separator between side panel and chat
+        separator = tk.Frame(content_frame, width=1, bg=LIGHT_GRAY)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 5))
         
-        # Bottom input area
-        self.create_input_area(main_frame)
+        # Right panel (chat with integrated search)
+        self.create_chat_panel(content_frame)
     
 
     
     def create_chat_panel(self, parent):
-        """Create the main chat interface"""
-        chat_frame = tk.Frame(parent, bg=WHITE)
-        chat_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        """Create the main chat interface with floating search"""
+        # Create chat container to hold both text and search
+        chat_container = tk.Frame(parent, bg=SOFT_PEARL)
+        chat_container.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        # Chat display area with Klein Blue border
-        chat_container = tk.Frame(chat_frame, bg=KLEIN_BLUE, relief="solid", bd=2)
-        chat_container.pack(fill=tk.BOTH, expand=True)
+        # Create custom text widget with auto-hiding scrollbar
+        text_frame = tk.Frame(chat_container, bg=SOFT_PEARL)
+        text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 60))
         
-        self.chat_text = scrolledtext.ScrolledText(
-            chat_container,
+        # Chat text area
+        self.chat_text = tk.Text(
+            text_frame,
             wrap=tk.WORD,
-            bg=WHITE,
+            bg=SOFT_PEARL,  # Warm pearl background for chat
             fg=DARK_GRAY,
             font=("Lucida Sans", 13),
             relief="flat",
             borderwidth=0,
+            highlightthickness=0,  # Remove focus border
             padx=15,
             pady=15
         )
-        self.chat_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        
+        # Auto-hiding scrollbar
+        self.chat_scrollbar = tk.Scrollbar(text_frame, command=self.chat_text.yview)
+        self.chat_text.configure(yscrollcommand=self._on_text_scroll)
+        
+        # Pack text widget to fill space
+        self.chat_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Initially hide scrollbar
+        self.scrollbar_visible = False
+        
+        # Floating search bar container - positioned over the chat container
+        search_overlay = tk.Frame(chat_container, bg=SOFT_PEARL)
+        # Position at bottom of chat container, full width
+        search_overlay.place(relx=0, rely=1.0, anchor="sw", relwidth=1.0)
+        
+        # Search input frame with warm subtle background
+        search_input_frame = tk.Frame(search_overlay, bg=WARM_GRAY, relief="flat", bd=1)
+        search_input_frame.pack(fill=tk.X, padx=15, pady=10)
+        
+        # Inner search container - single text widget with embedded send button
+        search_inner = tk.Frame(search_input_frame, bg=WARM_WHITE)
+        search_inner.pack(fill=tk.X, padx=2, pady=2)
+        
+        # Text input - full width with padding for embedded button
+        self.query_entry = tk.Text(search_inner, 
+                                 height=1,  # Exactly 1 line of text
+                                 bg=WARM_WHITE,  # Warm white for search input
+                                 fg=DARK_GRAY,
+                                 font=("Lucida Sans", 14),
+                                 relief="flat",
+                                 bd=0,
+                                 padx=15,
+                                 pady=12,  # More padding for better proportions
+                                 wrap=tk.NONE)
+        self.query_entry.pack(fill=tk.BOTH, expand=True)
+        
+        # Disable resizing of text widget
+        self.query_entry.bind("<Button-1>", lambda e: self.query_entry.focus_set())
+        self.query_entry.bind("<ButtonPress-1>", lambda e: self.query_entry.focus_set())
+        self.query_entry.bind("<B1-Motion>", lambda e: "break" if e.y > self.query_entry.winfo_height() - 10 else None)
+        
+        # Embedded send button - positioned inside the text area
+        self.send_button = tk.Button(self.query_entry, 
+                                   text="→",
+                                   command=self.send_query,
+                                   bg=WARM_WHITE,   # Warm background (matches search bar)
+                                   fg=KLEIN_BLUE,   # Blue arrow text
+                                   font=("Lucida Sans", 16, "bold"),
+                                   relief="flat", 
+                                   bd=0,
+                                   highlightthickness=0,  # Remove any border
+                                   activebackground=ULTRA_LIGHT_KLEIN_BLUE,  # Very light blue on hover
+                                   activeforeground=KLEIN_BLUE,
+                                   cursor="hand2")
+        
+        # Position the button inside the text widget on the right side with no spacing
+        self.send_button.place(relx=1.0, rely=0.5, anchor="e", x=-2, y=0)
+        
+        # Store reference to search overlay for visibility management
+        self.search_overlay = search_overlay
+        
+        # Bind Enter key and prevent newline behavior
+        self.query_entry.bind("<Return>", lambda e: self._handle_enter(e))
+        self.query_entry.bind("<Key-Return>", lambda e: self._handle_enter(e))
+        
+        # Focus on input
+        self.query_entry.focus_set()
+        
+        # Create centered welcome message overlay
+        self.create_welcome_overlay(chat_container)
         
         # Configure text tags for styling
         self.chat_text.tag_configure("user", foreground=KLEIN_BLUE, font=("Lucida Sans", 13, "bold"))
@@ -193,17 +263,85 @@ class ResearchAssistantGUI:
         self.chat_text.tag_configure("metadata", foreground=DARK_GRAY, font=("Lucida Sans", 11, "italic"))
         self.chat_text.tag_configure("rl_stats", foreground=KLEIN_BLUE, font=("Lucida Sans", 12, "bold"))
     
+    def _on_text_scroll(self, *args):
+        """Handle scrollbar visibility based on content"""
+        # Update scrollbar position
+        self.chat_scrollbar.set(*args)
+        
+        # Check if scrolling is needed
+        try:
+            # Get the fraction of visible content
+            top, bottom = self.chat_text.yview()
+            needs_scrollbar = (top > 0.0 or bottom < 1.0)
+            
+            # Show/hide scrollbar based on need
+            if needs_scrollbar and not self.scrollbar_visible:
+                self.chat_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                self.scrollbar_visible = True
+            elif not needs_scrollbar and self.scrollbar_visible:
+                self.chat_scrollbar.pack_forget()
+                self.scrollbar_visible = False
+        except:
+            pass  # Ignore errors during window creation/destruction
+    
+    def create_welcome_overlay(self, parent):
+        """Create centered welcome message overlay"""
+        # Create transparent overlay frame
+        self.welcome_overlay = tk.Frame(parent, bg=SOFT_PEARL)
+        self.welcome_overlay.place(relx=0.5, rely=0.4, anchor="center")
+        
+        # Welcome text with transparency effect (using colors for transparency illusion)
+        welcome_text = tk.Label(self.welcome_overlay,
+                               text="Welcome to Scientific Research Assistant!",
+                               bg=SOFT_PEARL,
+                               fg="#7A7A7A",  # Lighter gray for transparency effect
+                               font=("Lucida Sans", 18, "bold"),
+                               justify=tk.CENTER)
+        welcome_text.pack(pady=(0, 10))
+        
+        subtitle_text = tk.Label(self.welcome_overlay,
+                                text="Ask me anything about research papers and I'll learn to optimize my responses!",
+                                bg=SOFT_PEARL,
+                                fg="#999999",  # Even lighter gray
+                                font=("Lucida Sans", 14),
+                                justify=tk.CENTER,
+                                wraplength=400)  # Wrap long text
+        subtitle_text.pack()
+    
     def create_info_panel(self, parent):
         """Create the information and controls panel"""
-        info_frame = tk.Frame(parent, bg=WHITE)
-        info_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 10))
-        info_frame.configure(width=320)
+        self.info_frame = tk.Frame(parent, bg=WARM_BEIGE)  # Warm beige for side panel
+        self.info_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 15))
+        self.info_frame.configure(width=320)
+        
+        # Toggle button at the top
+        toggle_frame = tk.Frame(self.info_frame, bg=WARM_BEIGE)
+        toggle_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.toggle_button = tk.Button(toggle_frame,
+                                     text="▶ Hide Panel",
+                                     command=self.toggle_info_panel,
+                                     bg=KLEIN_BLUE, fg=WHITE,
+                                     font=("Lucida Sans", 11, "bold"),
+                                     relief="flat", bd=0,
+                                     pady=5,
+                                     activebackground=LIGHT_KLEIN_BLUE,
+                                     activeforeground=WHITE,
+                                     cursor="hand2")
+        self.toggle_button.pack(fill=tk.X)
+        
+        # Container for RL stats and controls
+        self.info_content = tk.Frame(self.info_frame, bg=WARM_BEIGE)
+        self.info_content.pack(fill=tk.BOTH, expand=True)
         
         # RL Statistics
-        self.create_rl_stats_section(info_frame)
+        self.create_rl_stats_section(self.info_content)
         
         # Controls
-        self.create_controls_section(info_frame)
+        self.create_controls_section(self.info_content)
+        
+        # Track panel visibility
+        self.panel_visible = True
     
     def create_rl_stats_section(self, parent):
         """Create RL statistics display"""
@@ -245,20 +383,20 @@ class ResearchAssistantGUI:
         controls_container = tk.Frame(parent, bg=KLEIN_BLUE, relief="solid", bd=2)
         controls_container.pack(fill=tk.X, pady=(0, 15))
         
-        controls_frame = tk.Frame(controls_container, bg=WHITE)
+        controls_frame = tk.Frame(controls_container, bg=CREAM)  # Warm cream background
         controls_frame.pack(fill=tk.BOTH, padx=2, pady=2)
         
         # Title
         title_label = tk.Label(controls_frame, text="🎮 Controls", 
-                              bg=WHITE, fg=KLEIN_BLUE, 
+                              bg=CREAM, fg=KLEIN_BLUE, 
                               font=("Lucida Sans", 14, "bold"))
         title_label.pack(pady=(10, 5))
         
         # RL iterations selector
-        iter_frame = tk.Frame(controls_frame, bg=WHITE)
+        iter_frame = tk.Frame(controls_frame, bg=CREAM)
         iter_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        tk.Label(iter_frame, text="RL Iterations:", bg=WHITE, fg=DARK_GRAY, 
+        tk.Label(iter_frame, text="RL Iterations:", bg=CREAM, fg=DARK_GRAY, 
                 font=("Lucida Sans", 12)).pack(anchor=tk.W)
         
         self.iterations_var = tk.StringVar(value="3")
@@ -267,7 +405,7 @@ class ResearchAssistantGUI:
         iterations_combo.pack(fill=tk.X, pady=(2, 0))
         
         # Control buttons with Klein Blue styling
-        button_frame = tk.Frame(controls_frame, bg=WHITE)
+        button_frame = tk.Frame(controls_frame, bg=CREAM)
         button_frame.pack(fill=tk.X, padx=10, pady=(10, 15))
         
         buttons = [
@@ -286,54 +424,30 @@ class ResearchAssistantGUI:
     
 
     
-    def create_input_area(self, parent):
-        """Create the input area at the bottom"""
-        input_frame = tk.Frame(parent, bg=WHITE)
-        input_frame.pack(fill=tk.X, pady=(5, 10))
+
+
+    def _handle_enter(self, event):
+        """Handle Enter key press - send query and prevent newline"""
+        self.send_query()
+        return "break"  # Prevent default behavior (adding newline)
+    
+    def toggle_info_panel(self):
+        """Toggle the visibility of the RL info panel"""
+        if self.panel_visible:
+            # Hide the panel
+            self.info_content.pack_forget()
+            self.toggle_button.configure(text="☰", font=("Lucida Sans", 16, "bold"))  # Hamburger menu
+            self.info_frame.configure(width=50)  # Just wide enough for hamburger menu
+            self.panel_visible = False
+        else:
+            # Show the panel
+            self.info_content.pack(fill=tk.BOTH, expand=True)
+            self.toggle_button.configure(text="▶ Hide Panel", font=("Lucida Sans", 11, "bold"))
+            self.info_frame.configure(width=320)  # Original width
+            self.panel_visible = True
         
-        # Input label
-        input_label = tk.Label(input_frame, text="💭 Research Query:", 
-                              bg=WHITE, fg=KLEIN_BLUE, font=("Lucida Sans", 14, "bold"))
-        input_label.pack(anchor=tk.W, padx=10)
-        
-        # Input area with Klein Blue border
-        input_container = tk.Frame(input_frame, bg=WHITE)
-        input_container.pack(fill=tk.X, padx=10, pady=(5, 0))
-        
-        # Text input with Klein Blue border
-        text_container = tk.Frame(input_container, bg=KLEIN_BLUE, relief="solid", bd=2)
-        text_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        self.query_entry = tk.Text(text_container, 
-                                 height=3,
-                                 bg=WHITE,
-                                 fg=DARK_GRAY,
-                                 font=("Lucida Sans", 13),
-                                 relief="flat",
-                                 bd=0,
-                                 padx=10,
-                                 pady=8,
-                                 wrap=tk.WORD)
-        self.query_entry.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-        
-        # Send button with Klein Blue styling
-        self.send_button = tk.Button(input_container, 
-                                   text="🚀 Analyze\n(Ctrl+Enter)",
-                                   command=self.send_query,
-                                   bg=KLEIN_BLUE, fg=WHITE,
-                                   font=("Lucida Sans", 13, "bold"),
-                                   relief="flat", bd=0,
-                                   padx=20, pady=15,
-                                   activebackground=LIGHT_KLEIN_BLUE,
-                                   activeforeground=WHITE)
-        self.send_button.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Bind keyboard shortcuts
-        self.query_entry.bind("<Control-Return>", lambda e: self.send_query())
-        self.query_entry.bind("<Control-Key-Return>", lambda e: self.send_query())
-        
-        # Focus on input
-        self.query_entry.focus_set()
+        # Simple update - embedded button positioning is relative and won't be affected
+        self.root.update_idletasks()
     
     def initialize_rl_system(self):
         """Initialize the RL system in a separate thread"""
@@ -345,8 +459,7 @@ class ResearchAssistantGUI:
                 
                 self.rl_rag = RLEnhancedRAG()
                 self.root.after(0, self.update_rl_stats)
-                self.root.after(0, lambda: self.add_system_message("RL system initialized and ready! 🎉"))
-                self.root.after(0, lambda: self.add_system_message("✅ Gemini API configured and working"))
+                # RL system ready silently - no messages needed
             except Exception as e:
                 error_msg = f"Failed to initialize RL system: {e}"
                 self.root.after(0, lambda msg=error_msg: self.add_error_message(msg))
@@ -385,6 +498,9 @@ class ResearchAssistantGUI:
         
         self.chat_text.configure(state=tk.DISABLED)
         self.chat_text.see(tk.END)
+        
+        # Check if scrollbar needs to be shown/hidden
+        self.root.after_idle(lambda: self._on_text_scroll(*self.chat_text.yview()))
     
     def format_analysis_message(self, message: ChatMessage):
         """Format an analysis result message"""
@@ -487,6 +603,11 @@ class ResearchAssistantGUI:
         if not query:
             return
         
+        # Hide welcome overlay on first search
+        if not self.first_search_done and hasattr(self, 'welcome_overlay'):
+            self.welcome_overlay.destroy()
+            self.first_search_done = True
+        
         if not self.rl_rag:
             self.add_error_message("RL system not initialized yet. Please wait...")
             return
@@ -500,7 +621,7 @@ class ResearchAssistantGUI:
 
         
         # Disable send button and show progress
-        self.send_button.configure(state="disabled", text="🔄 Analyzing...", bg=WARNING_ORANGE)
+        self.send_button.configure(state="disabled", text="⏳", fg=WARNING_ORANGE)
         
         # Process query in background
         def process_query():
@@ -526,7 +647,7 @@ class ResearchAssistantGUI:
                 self.root.after(0, lambda: self.add_error_message(error_msg))
             finally:
                 self.root.after(0, lambda: self.send_button.configure(
-                    state="normal", text="🚀 Analyze\n(Ctrl+Enter)", bg=KLEIN_BLUE))
+                    state="normal", text="→", fg=KLEIN_BLUE))
         
         threading.Thread(target=process_query, daemon=True).start()
     
@@ -660,6 +781,12 @@ Current exploration rate of {stats['epsilon']:.3f} means {stats['epsilon']*100:.
             self.chat_text.delete(1.0, tk.END)
             self.chat_text.configure(state=tk.DISABLED)
             self.chat_messages = []
+            
+            # Hide scrollbar since no content
+            if self.scrollbar_visible:
+                self.chat_scrollbar.pack_forget()
+                self.scrollbar_visible = False
+            
             self.add_system_message("Chat cleared! Ready for new queries. 🧹")
     
 

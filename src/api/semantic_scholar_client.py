@@ -12,7 +12,7 @@ class SemanticScholarPaper:
     """Data class for Semantic Scholar paper information"""
     id: str
     title: str
-    authors: List[Dict[str, str]]  # {"name": str, "authorId": str}
+    authors: List[Dict[str, str]]
     abstract: str
     year: Optional[int]
     venue: Optional[str]
@@ -24,8 +24,8 @@ class SemanticScholarPaper:
     doi: Optional[str] = None
     arxiv_id: Optional[str] = None
     pubmed_id: Optional[str] = None
-    citations: Optional[List[str]] = None  # List of citing paper IDs
-    references: Optional[List[str]] = None  # List of referenced paper IDs
+    citations: Optional[List[str]] = None
+    references: Optional[List[str]] = None
 
 class SemanticScholarClient:
     """Client for Semantic Scholar API with advanced citation analysis"""
@@ -36,10 +36,7 @@ class SemanticScholarClient:
         self.rate_limit = config.api.SEMANTIC_SCHOLAR_RATE_LIMIT
         self.last_request_time = 0
         
-        # Headers for requests
-        self.headers = {
-            "User-Agent": "RAG-Research-Assistant/1.0",
-        }
+        self.headers = {"User-Agent": "RAG-Research-Assistant/1.0"}
         if self.api_key:
             self.headers["x-api-key"] = self.api_key
     
@@ -58,7 +55,6 @@ class SemanticScholarClient:
     def _parse_paper(self, paper_data: Dict) -> SemanticScholarPaper:
         """Parse paper data from Semantic Scholar API response"""
         try:
-            # Extract author information
             authors = []
             for author in paper_data.get("authors", []):
                 authors.append({
@@ -66,13 +62,11 @@ class SemanticScholarClient:
                     "authorId": author.get("authorId", "")
                 })
             
-            # Extract external IDs
             external_ids = paper_data.get("externalIds", {})
             doi = external_ids.get("DOI")
             arxiv_id = external_ids.get("ArXiv")
             pubmed_id = external_ids.get("PubMed")
             
-            # Extract fields of study
             fields = paper_data.get("fieldsOfStudy", [])
             if not isinstance(fields, list):
                 fields = []
@@ -97,26 +91,11 @@ class SemanticScholarClient:
             logger.error(f"Error parsing Semantic Scholar paper: {e}")
             return None
     
-    async def search(self, 
-                     query: str, 
-                     max_results: int = 20,
-                     fields: List[str] = None,
+    async def search(self, query: str, max_results: int = 20, fields: List[str] = None, 
                      year_range: tuple = None) -> List[SemanticScholarPaper]:
-        """
-        Search Semantic Scholar for papers
-        
-        Args:
-            query: Search query
-            max_results: Maximum number of results
-            fields: List of fields to return
-            year_range: Tuple of (start_year, end_year)
-            
-        Returns:
-            List of SemanticScholarPaper objects
-        """
+        """Search Semantic Scholar for papers"""
         await self._rate_limit_wait()
         
-        # Default fields to retrieve
         if fields is None:
             fields = [
                 "paperId", "title", "abstract", "authors", "year", "venue",
@@ -126,11 +105,10 @@ class SemanticScholarClient:
         
         params = {
             "query": query,
-            "limit": min(max_results, 100),  # API limit
+            "limit": min(max_results, 100),
             "fields": ",".join(fields)
         }
         
-        # Add year filter if specified
         if year_range:
             params["year"] = f"{year_range[0]}-{year_range[1]}"
         
@@ -159,15 +137,7 @@ class SemanticScholarClient:
             return []
     
     async def get_paper_details(self, paper_id: str) -> Optional[SemanticScholarPaper]:
-        """
-        Get detailed information about a specific paper
-        
-        Args:
-            paper_id: Semantic Scholar paper ID
-            
-        Returns:
-            SemanticScholarPaper object or None
-        """
+        """Get detailed information about a specific paper"""
         await self._rate_limit_wait()
         
         fields = [
@@ -186,7 +156,6 @@ class SemanticScholarClient:
                         data = await response.json()
                         paper = self._parse_paper(data)
                         
-                        # Add citation and reference data
                         if paper:
                             paper.citations = [c["paperId"] for c in data.get("citations", [])]
                             paper.references = [r["paperId"] for r in data.get("references", [])]
@@ -201,16 +170,7 @@ class SemanticScholarClient:
             return None
     
     async def get_citations(self, paper_id: str, max_results: int = 50) -> List[SemanticScholarPaper]:
-        """
-        Get papers that cite the given paper
-        
-        Args:
-            paper_id: Semantic Scholar paper ID
-            max_results: Maximum number of citing papers to return
-            
-        Returns:
-            List of citing papers
-        """
+        """Get papers that cite the given paper"""
         await self._rate_limit_wait()
         
         fields = [
@@ -249,16 +209,7 @@ class SemanticScholarClient:
             return []
     
     async def get_author_papers(self, author_id: str, max_results: int = 50) -> List[SemanticScholarPaper]:
-        """
-        Get papers by a specific author
-        
-        Args:
-            author_id: Semantic Scholar author ID
-            max_results: Maximum number of papers to return
-            
-        Returns:
-            List of author's papers
-        """
+        """Get papers by a specific author"""
         await self._rate_limit_wait()
         
         fields = [
@@ -296,29 +247,17 @@ class SemanticScholarClient:
             return []
     
     async def get_trending_papers(self, field: str = "Computer Science", days: int = 7) -> List[SemanticScholarPaper]:
-        """
-        Get trending papers in a specific field
-        
-        Args:
-            field: Field of study
-            days: Number of days to look back
-            
-        Returns:
-            List of trending papers
-        """
+        """Get trending papers in a specific field"""
         from datetime import datetime, timedelta
         
-        # Calculate date range
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        # Search for recent papers with high citation velocity
         query = f"fieldsOfStudy:{field}"
         year_range = (start_date.year, end_date.year)
         
         papers = await self.search(query, max_results=100, year_range=year_range)
         
-        # Sort by influential citation count and recency
         trending = sorted(papers, 
                          key=lambda p: (p.influential_citation_count, p.year or 0), 
                          reverse=True)

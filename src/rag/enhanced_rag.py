@@ -101,13 +101,39 @@ class EnhancedRAG:
         # Use existing RAG pipeline to get papers
         search_results = await self.rag_pipeline.search_literature(
             query=query,
-            sources=sources or ['arxiv', 'semantic_scholar'],
+            sources=sources or ['arxiv', 'pubmed', 'semantic_scholar'],
             max_results_per_source=15  # Get more to ensure we have 5 good ones
         )
         
-        # Convert to PaperInfo format and take top 5
+        # Convert to PaperInfo format with source diversity
         papers = []
-        for result in search_results[:self.target_paper_count]:
+        
+        # Ensure source diversity: try to get papers from each source
+        papers_by_source = {}
+        for result in search_results:
+            source = result.source
+            if source not in papers_by_source:
+                papers_by_source[source] = []
+            papers_by_source[source].append(result)
+        
+        # Select papers with diversity: aim for ~2 from each source if possible
+        max_per_source = max(1, self.target_paper_count // len(papers_by_source)) if papers_by_source else 1
+        selected_papers = []
+        
+        # First pass: take top papers from each source
+        for source, source_papers in papers_by_source.items():
+            for paper in source_papers[:max_per_source]:
+                if len(selected_papers) < self.target_paper_count:
+                    selected_papers.append(paper)
+        
+        # Second pass: fill remaining slots with highest-ranked papers
+        remaining_slots = self.target_paper_count - len(selected_papers)
+        if remaining_slots > 0:
+            remaining_papers = [p for p in search_results if p not in selected_papers]
+            selected_papers.extend(remaining_papers[:remaining_slots])
+        
+        # Convert to PaperInfo format
+        for result in selected_papers:
             paper = PaperInfo(
                 title=result.title,
                 doi=result.doi,

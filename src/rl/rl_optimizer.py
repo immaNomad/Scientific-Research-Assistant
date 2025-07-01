@@ -63,11 +63,339 @@ class QueryOptimizer:
     def detect_domain(self, query: str) -> str:
         """Detect research domain from query"""
         domain_keywords = {
-            'cybersecurity': ['security', 'attack', 'ransomware', 'malware', 'vulnerability', 'encryption'],
-            'healthcare': ['medical', 'health', 'patient', 'diagnosis', 'treatment', 'clinical'],
-            'ai': ['machine learning', 'deep learning', 'neural', 'artificial intelligence', 'algorithm'],
-            'climate': ['climate', 'environment', 'sustainability', 'carbon', 'renewable'],
-            'robotics': ['robot', 'automation', 'control', 'robotic', 'autonomous']
+            'cybersecurity': [
+                # Core security terms
+                'security', 'cybersecurity', 'infosec', 'information security', 'cyber', 'secure', 'safety',
+                # Attacks and threats
+                'attack', 'threat', 'exploit', 'breach', 'intrusion', 'penetration', 'hacking', 'hack',
+                'phishing', 'spear phishing', 'social engineering', 'ransomware', 'malware', 'virus',
+                'trojan', 'worm', 'spyware', 'adware', 'rootkit', 'backdoor', 'botnet', 'ddos',
+                # Vulnerabilities and risks
+                'vulnerability', 'zero-day', 'cve', 'risk', 'exposure', 'weakness', 'flaw', 'bug',
+                # Security measures
+                'encryption', 'cryptography', 'authentication', 'authorization', 'access control',
+                'firewall', 'antivirus', 'ids', 'ips', 'siem', 'endpoint', 'network security',
+                'application security', 'web security', 'cloud security', 'mobile security',
+                # Security practices
+                'incident response', 'forensics', 'compliance', 'governance', 'audit', 'penetration testing',
+                'security assessment', 'threat modeling', 'risk management', 'security awareness'
+            ],
+            'healthcare': [
+                # General medical terms
+                'medical', 'health', 'patient', 'diagnosis', 'treatment', 'clinical', 'medicine', 'healthcare',
+                'hospital', 'clinic', 'physician', 'doctor', 'nurse', 'therapy', 'therapeutic',
+                # Diseases and conditions
+                'cancer', 'tumor', 'carcinoma', 'oncology', 'metastasis', 'malignant', 'benign',
+                'diabetes', 'insulin', 'glucose', 'blood sugar', 'diabetic', 'glycemic',
+                'hypertension', 'blood pressure', 'cardiovascular', 'heart', 'cardiac', 'coronary',
+                'stroke', 'cerebrovascular', 'brain', 'neurological', 'alzheimer', 'dementia',
+                'covid', 'coronavirus', 'pandemic', 'epidemic', 'infectious', 'contagious',
+                'pneumonia', 'respiratory', 'lung', 'pulmonary', 'asthma', 'copd',
+                'infection', 'bacterial', 'viral', 'fungal', 'pathogen', 'microbe',
+                'disease', 'illness', 'condition', 'syndrome', 'disorder', 'pathology',
+                'mental health', 'depression', 'anxiety', 'psychiatric', 'psychological',
+                'obesity', 'overweight', 'metabolic', 'nutrition', 'diet', 'dietary',
+                'arthritis', 'osteoporosis', 'fracture', 'bone', 'joint', 'musculoskeletal',
+                'kidney', 'renal', 'liver', 'hepatic', 'gastrointestinal', 'digestive',
+                # Treatments and interventions
+                'medication', 'drug', 'pharmaceutical', 'medicine', 'prescription', 'dose', 'dosage',
+                'therapy', 'treatment', 'intervention', 'procedure', 'surgery', 'surgical', 'operation',
+                'immunotherapy', 'chemotherapy', 'radiation', 'radiotherapy', 'vaccine', 'vaccination',
+                'antibiotic', 'antiviral', 'antifungal', 'analgesic', 'anesthetic', 'steroid',
+                'transplant', 'transfusion', 'dialysis', 'rehabilitation', 'physiotherapy',
+                # Medical outcomes and measures
+                'efficacy', 'effectiveness', 'outcome', 'result', 'response', 'adverse', 'side effect',
+                'mortality', 'death', 'survival', 'morbidity', 'recovery', 'remission', 'relapse',
+                'prevention', 'prophylaxis', 'screening', 'early detection', 'diagnostic', 'prognosis',
+                'quality of life', 'patient satisfaction', 'safety', 'toxicity', 'contraindication',
+                # Medical research and methodology
+                'trial', 'clinical trial', 'study', 'research', 'randomized', 'controlled', 'placebo',
+                'double-blind', 'single-blind', 'crossover', 'longitudinal', 'retrospective', 'prospective',
+                'epidemiology', 'cohort', 'case-control', 'case study', 'systematic review', 'meta-analysis',
+                'biomarker', 'biostatistics', 'evidence-based', 'peer-reviewed', 'protocol',
+                # Medical specialties
+                'cardiology', 'neurology', 'oncology', 'pediatrics', 'geriatrics', 'psychiatry',
+                'dermatology', 'ophthalmology', 'orthopedics', 'radiology', 'pathology', 'anesthesiology',
+                'emergency medicine', 'family medicine', 'internal medicine', 'surgery'
+            ],
+            'ai': [
+                # Core AI terms
+                'artificial intelligence', 'ai', 'machine learning', 'ml', 'deep learning', 'neural',
+                'neural network', 'deep neural network', 'artificial neural network', 'ann', 'dnn',
+                'algorithm', 'model', 'training', 'learning', 'intelligence', 'cognitive',
+                # ML algorithms and techniques
+                'supervised learning', 'unsupervised learning', 'reinforcement learning', 'semi-supervised',
+                'classification', 'regression', 'clustering', 'dimensionality reduction', 'feature selection',
+                'decision tree', 'random forest', 'support vector machine', 'svm', 'naive bayes',
+                'k-means', 'linear regression', 'logistic regression', 'gradient descent', 'backpropagation',
+                # Deep learning architectures
+                'convolutional neural network', 'cnn', 'recurrent neural network', 'rnn', 'lstm', 'gru',
+                'transformer', 'attention', 'self-attention', 'bert', 'gpt', 'autoencoder', 'gan',
+                'generative adversarial network', 'variational autoencoder', 'vae', 'resnet', 'inception',
+                # NLP and language
+                'natural language processing', 'nlp', 'language model', 'text mining', 'sentiment analysis',
+                'named entity recognition', 'ner', 'part-of-speech', 'parsing', 'tokenization',
+                'word embedding', 'word2vec', 'glove', 'fasttext', 'embedding', 'language generation',
+                # Computer vision
+                'computer vision', 'image recognition', 'object detection', 'image classification',
+                'facial recognition', 'optical character recognition', 'ocr', 'image processing',
+                'feature extraction', 'edge detection', 'segmentation', 'tracking',
+                # AI applications and concepts
+                'automation', 'robotics', 'autonomous', 'expert system', 'knowledge base',
+                'fuzzy logic', 'genetic algorithm', 'evolutionary computation', 'swarm intelligence',
+                'optimization', 'heuristic', 'search algorithm', 'planning', 'reasoning',
+                'knowledge representation', 'ontology', 'semantic web', 'chatbot', 'virtual assistant'
+            ],
+            'physics': [
+                # Classical physics
+                'physics', 'mechanics', 'thermodynamics', 'electromagnetism', 'optics', 'acoustics',
+                'force', 'energy', 'momentum', 'velocity', 'acceleration', 'gravity', 'mass',
+                'wave', 'frequency', 'amplitude', 'electromagnetic', 'radiation', 'spectrum',
+                # Quantum physics
+                'quantum', 'quantum mechanics', 'quantum physics', 'quantum computing', 'qubit',
+                'superposition', 'entanglement', 'quantum field theory', 'quantum state',
+                'wave function', 'uncertainty principle', 'schrodinger', 'heisenberg',
+                'quantum cryptography', 'quantum information', 'quantum algorithm',
+                # Particle physics
+                'particle', 'elementary particle', 'subatomic', 'hadron', 'lepton', 'quark',
+                'photon', 'electron', 'proton', 'neutron', 'boson', 'fermion', 'antimatter',
+                'collider', 'accelerator', 'particle detector', 'standard model',
+                # Relativity and cosmology
+                'relativity', 'general relativity', 'special relativity', 'spacetime', 'black hole',
+                'cosmology', 'universe', 'big bang', 'dark matter', 'dark energy', 'galaxy',
+                'astrophysics', 'astronomy', 'stellar', 'planetary', 'gravitational wave'
+            ],
+            'chemistry': [
+                # General chemistry
+                'chemistry', 'chemical', 'molecule', 'atom', 'element', 'compound', 'reaction',
+                'bond', 'ionic', 'covalent', 'metallic', 'hydrogen bond', 'valence', 'electron',
+                'periodic table', 'atomic number', 'molecular weight', 'molar', 'concentration',
+                # Organic chemistry
+                'organic', 'hydrocarbon', 'alkane', 'alkene', 'alkyne', 'aromatic', 'benzene',
+                'functional group', 'alcohol', 'aldehyde', 'ketone', 'carboxylic acid', 'ester',
+                'polymer', 'synthesis', 'mechanism', 'stereochemistry', 'isomer', 'chirality',
+                # Inorganic chemistry
+                'inorganic', 'metal', 'crystal', 'coordination', 'ligand', 'transition metal',
+                'oxide', 'salt', 'acid', 'base', 'ph', 'buffer', 'precipitation', 'solubility',
+                # Analytical chemistry
+                'analytical', 'spectroscopy', 'chromatography', 'mass spectrometry', 'nmr',
+                'analysis', 'quantitative', 'qualitative', 'purification', 'separation',
+                # Biochemistry
+                'biochemistry', 'protein', 'enzyme', 'amino acid', 'dna', 'rna', 'nucleic acid',
+                'metabolism', 'catalysis', 'biochemical', 'biological', 'bioorganic'
+            ],
+            'biology': [
+                # General biology
+                'biology', 'biological', 'life science', 'organism', 'species', 'evolution',
+                'genetics', 'gene', 'dna', 'rna', 'genome', 'chromosome', 'mutation',
+                'cell', 'cellular', 'tissue', 'organ', 'organism', 'ecosystem', 'biodiversity',
+                # Molecular biology
+                'molecular biology', 'protein', 'enzyme', 'amino acid', 'nucleotide', 'codon',
+                'transcription', 'translation', 'replication', 'pcr', 'cloning', 'sequencing',
+                'crispr', 'gene editing', 'genetic engineering', 'biotechnology', 'bioinformatics',
+                # Microbiology
+                'microbiology', 'bacteria', 'virus', 'microorganism', 'pathogen', 'antibiotic',
+                'culture', 'fermentation', 'probiotic', 'microbiome', 'infectious disease',
+                # Ecology and environment
+                'ecology', 'environmental', 'conservation', 'habitat', 'population', 'community',
+                'food chain', 'nutrient cycle', 'climate change', 'pollution', 'endangered',
+                # Other biological fields
+                'neurobiology', 'immunology', 'developmental biology', 'marine biology',
+                'botany', 'zoology', 'anatomy', 'physiology', 'pharmacology', 'toxicology'
+            ],
+            'engineering': [
+                # General engineering
+                'engineering', 'engineer', 'design', 'system', 'optimization', 'efficiency',
+                'manufacturing', 'production', 'quality control', 'testing', 'prototype',
+                'specification', 'requirement', 'performance', 'reliability', 'safety',
+                # Mechanical engineering
+                'mechanical', 'thermal', 'fluid dynamics', 'heat transfer', 'combustion',
+                'materials', 'stress', 'strain', 'fatigue', 'vibration', 'dynamics',
+                'mechanism', 'machine', 'motor', 'engine', 'turbine', 'pump', 'compressor',
+                # Electrical engineering
+                'electrical', 'electronic', 'circuit', 'semiconductor', 'microprocessor',
+                'signal processing', 'power', 'voltage', 'current', 'resistance', 'capacitor',
+                'transistor', 'amplifier', 'filter', 'antenna', 'communication', 'wireless',
+                # Civil engineering
+                'civil', 'structural', 'construction', 'concrete', 'steel', 'foundation',
+                'bridge', 'building', 'infrastructure', 'geotechnical', 'earthquake', 'seismic',
+                # Chemical engineering
+                'chemical engineering', 'process', 'reactor', 'distillation', 'separation',
+                'unit operation', 'mass transfer', 'reaction engineering', 'process control',
+                # Computer engineering
+                'computer engineering', 'hardware', 'software', 'embedded', 'microcontroller',
+                'firmware', 'real-time', 'digital signal processing', 'vlsi', 'fpga'
+            ],
+            'climate': [
+                # Climate science
+                'climate', 'climate change', 'global warming', 'greenhouse gas', 'carbon dioxide',
+                'methane', 'temperature', 'precipitation', 'weather', 'atmospheric', 'ocean',
+                'ice', 'glacier', 'sea level', 'polar', 'arctic', 'antarctic', 'permafrost',
+                # Environmental science
+                'environment', 'environmental', 'ecology', 'ecosystem', 'biodiversity',
+                'conservation', 'sustainability', 'pollution', 'contamination', 'toxicity',
+                'air quality', 'water quality', 'soil', 'habitat', 'deforestation', 'desertification',
+                # Energy and sustainability
+                'renewable', 'solar', 'wind', 'hydroelectric', 'geothermal', 'biomass',
+                'fossil fuel', 'coal', 'oil', 'natural gas', 'nuclear', 'energy efficiency',
+                'carbon footprint', 'emission', 'mitigation', 'adaptation', 'resilience',
+                'green technology', 'clean energy', 'electric vehicle', 'battery', 'storage'
+            ],
+            'robotics': [
+                # Core robotics
+                'robot', 'robotics', 'robotic', 'automation', 'autonomous', 'control',
+                'actuator', 'sensor', 'servo', 'motor', 'joint', 'manipulator', 'gripper',
+                'locomotion', 'navigation', 'path planning', 'obstacle avoidance', 'mapping',
+                # Robot types
+                'humanoid', 'industrial robot', 'service robot', 'mobile robot', 'drone',
+                'unmanned aerial vehicle', 'uav', 'autonomous vehicle', 'self-driving',
+                'surgical robot', 'rehabilitation robot', 'social robot', 'companion robot',
+                # AI in robotics
+                'machine learning', 'computer vision', 'artificial intelligence', 'neural network',
+                'reinforcement learning', 'imitation learning', 'behavior tree', 'planning',
+                'perception', 'recognition', 'tracking', 'localization', 'slam',
+                # Control and systems
+                'control system', 'feedback', 'pid', 'trajectory', 'kinematics', 'dynamics',
+                'inverse kinematics', 'forward kinematics', 'motion control', 'real-time',
+                'embedded system', 'microcontroller', 'real-time operating system', 'rtos'
+            ],
+            'economics': [
+                # Core economics
+                'economics', 'economic', 'economy', 'market', 'trade', 'commerce', 'business',
+                'finance', 'financial', 'investment', 'capital', 'asset', 'stock', 'bond',
+                'currency', 'exchange rate', 'inflation', 'deflation', 'recession', 'growth',
+                'gdp', 'unemployment', 'employment', 'labor', 'wage', 'salary', 'income',
+                'poverty', 'inequality', 'distribution', 'welfare', 'subsidy', 'tax', 'fiscal',
+                'monetary', 'central bank', 'interest rate', 'credit', 'debt', 'banking',
+                'insurance', 'regulation', 'policy', 'international trade', 'globalization',
+                'supply', 'demand', 'price', 'cost', 'profit', 'revenue', 'productivity',
+                'competition', 'monopoly', 'oligopoly', 'market structure', 'elasticity'
+            ],
+            'psychology': [
+                # Core psychology
+                'psychology', 'psychological', 'behavior', 'cognitive', 'emotion', 'perception',
+                'learning', 'memory', 'attention', 'consciousness', 'motivation', 'personality',
+                'development', 'social', 'clinical', 'therapy', 'counseling', 'mental health',
+                'depression', 'anxiety', 'stress', 'trauma', 'ptsd', 'addiction', 'disorder',
+                'neuroscience', 'brain', 'neural', 'psychotherapy', 'behavioral', 'intervention'
+            ],
+            'mathematics': [
+                # Pure mathematics
+                'mathematics', 'math', 'algebra', 'calculus', 'geometry', 'topology', 'analysis',
+                'number theory', 'combinatorics', 'graph theory', 'set theory', 'logic',
+                'theorem', 'proof', 'lemma', 'axiom', 'conjecture', 'formula', 'equation',
+                'differential equation', 'partial differential', 'linear algebra', 'matrix',
+                'vector', 'eigenvalue', 'eigenvector', 'determinant', 'integral', 'derivative',
+                # Applied mathematics
+                'statistics', 'probability', 'stochastic', 'bayesian', 'regression', 'correlation',
+                'distribution', 'hypothesis testing', 'sampling', 'variance', 'standard deviation',
+                'optimization', 'linear programming', 'nonlinear', 'numerical analysis',
+                'computational mathematics', 'discrete mathematics', 'cryptography'
+            ],
+            'computer_science': [
+                # Core CS
+                'computer science', 'computing', 'programming', 'software', 'algorithm',
+                'data structure', 'complexity', 'computational', 'computer', 'programming language',
+                'object-oriented', 'functional programming', 'compiler', 'interpreter', 'debugging',
+                # Software engineering
+                'software engineering', 'software development', 'agile', 'scrum', 'devops',
+                'version control', 'git', 'testing', 'unit test', 'integration test', 'deployment',
+                'architecture', 'design pattern', 'microservices', 'api', 'rest', 'graphql',
+                # Systems and networks
+                'operating system', 'linux', 'windows', 'unix', 'kernel', 'process', 'thread',
+                'network', 'internet', 'protocol', 'tcp', 'ip', 'http', 'https', 'dns',
+                'distributed system', 'cloud computing', 'virtualization', 'container', 'docker',
+                # Databases
+                'database', 'sql', 'nosql', 'mongodb', 'postgresql', 'mysql', 'data mining',
+                'big data', 'data warehouse', 'etl', 'data analytics', 'business intelligence',
+                # Web development
+                'web development', 'html', 'css', 'javascript', 'react', 'angular', 'vue',
+                'frontend', 'backend', 'full-stack', 'responsive design', 'user interface'
+            ],
+            'social_sciences': [
+                # Sociology
+                'sociology', 'social', 'society', 'culture', 'community', 'social structure',
+                'social change', 'social movement', 'inequality', 'class', 'race', 'gender',
+                'ethnicity', 'migration', 'urbanization', 'globalization', 'family', 'education',
+                # Political science
+                'political science', 'politics', 'government', 'democracy', 'election', 'voting',
+                'policy', 'governance', 'public administration', 'international relations',
+                'diplomacy', 'war', 'peace', 'conflict', 'security', 'terrorism', 'human rights',
+                # Anthropology
+                'anthropology', 'anthropological', 'cultural', 'ethnography', 'archaeology',
+                'linguistic', 'social organization', 'kinship', 'ritual', 'religion', 'belief',
+                # Geography
+                'geography', 'geographical', 'spatial', 'location', 'mapping', 'gis',
+                'urban planning', 'regional', 'landscape', 'demography', 'population'
+            ],
+            'education': [
+                # Educational theory and practice
+                'education', 'educational', 'pedagogy', 'teaching', 'learning', 'curriculum',
+                'instruction', 'assessment', 'evaluation', 'student', 'teacher', 'classroom',
+                'school', 'university', 'college', 'academic', 'literacy', 'numeracy',
+                'special education', 'inclusive education', 'distance learning', 'e-learning',
+                'educational technology', 'edtech', 'online learning', 'blended learning',
+                'educational psychology', 'cognitive load', 'motivation', 'engagement',
+                'educational research', 'educational policy', 'educational reform'
+            ],
+            'business': [
+                # Management and strategy
+                'business', 'management', 'strategy', 'leadership', 'organization', 'corporate',
+                'enterprise', 'company', 'firm', 'startup', 'entrepreneurship', 'innovation',
+                'strategic planning', 'competitive advantage', 'market analysis', 'swot',
+                # Marketing and sales
+                'marketing', 'advertising', 'brand', 'customer', 'consumer', 'sales',
+                'digital marketing', 'social media marketing', 'content marketing', 'seo',
+                'customer relationship', 'crm', 'market research', 'segmentation', 'targeting',
+                # Operations and supply chain
+                'operations', 'supply chain', 'logistics', 'procurement', 'inventory',
+                'quality management', 'lean', 'six sigma', 'process improvement', 'efficiency',
+                # Human resources
+                'human resources', 'hr', 'talent management', 'recruitment', 'training',
+                'performance management', 'compensation', 'benefits', 'organizational behavior'
+            ],
+            'law': [
+                # Legal fields
+                'law', 'legal', 'legislation', 'regulation', 'statute', 'constitutional',
+                'criminal law', 'civil law', 'contract', 'tort', 'property law', 'family law',
+                'commercial law', 'corporate law', 'intellectual property', 'patent', 'copyright',
+                'trademark', 'litigation', 'court', 'judge', 'jury', 'trial', 'appeal',
+                'lawyer', 'attorney', 'legal practice', 'jurisprudence', 'legal theory',
+                'international law', 'human rights law', 'environmental law', 'tax law',
+                'labor law', 'employment law', 'immigration law', 'criminal justice'
+            ],
+            'agriculture': [
+                # Farming and crops
+                'agriculture', 'farming', 'crop', 'plant', 'soil', 'fertilizer', 'pesticide',
+                'irrigation', 'harvest', 'yield', 'seed', 'cultivation', 'greenhouse', 'organic',
+                'sustainable agriculture', 'precision agriculture', 'agricultural technology',
+                # Livestock and animal science
+                'livestock', 'cattle', 'dairy', 'poultry', 'swine', 'sheep', 'animal husbandry',
+                'veterinary', 'animal health', 'breeding', 'genetics', 'nutrition', 'feed',
+                # Food science
+                'food science', 'food technology', 'food safety', 'food processing',
+                'food preservation', 'packaging', 'quality control', 'nutrition', 'diet'
+            ],
+            'materials_science': [
+                # Materials and properties
+                'materials science', 'material', 'metal', 'alloy', 'steel', 'aluminum',
+                'ceramic', 'polymer', 'plastic', 'composite', 'nanomaterial', 'nanotechnology',
+                'crystal', 'crystalline', 'amorphous', 'phase', 'microstructure', 'grain',
+                'mechanical properties', 'strength', 'hardness', 'toughness', 'elasticity',
+                'thermal properties', 'electrical properties', 'magnetic properties',
+                'corrosion', 'oxidation', 'fatigue', 'fracture', 'wear', 'coating',
+                'surface treatment', 'heat treatment', 'processing', 'manufacturing'
+            ],
+            'environmental_science': [
+                # Environmental studies
+                'environmental science', 'environmental', 'ecology', 'ecosystem', 'biodiversity',
+                'conservation', 'preservation', 'habitat', 'species', 'extinction', 'endangered',
+                'pollution', 'contamination', 'waste', 'recycling', 'sustainability',
+                'air quality', 'water quality', 'soil contamination', 'groundwater',
+                'environmental monitoring', 'environmental assessment', 'impact assessment',
+                'environmental policy', 'environmental regulation', 'green technology',
+                'renewable energy', 'clean energy', 'carbon footprint', 'life cycle assessment'
+            ]
         }
         
         query_lower = query.lower()
@@ -108,12 +436,15 @@ class QueryOptimizer:
             ['make_general']   # Make more general
         ]
         
-        # Different source selection strategies (prefer working sources)
+        # Different source selection strategies (include all sources)
         source_strategies = [
+            ['pubmed'],  # PubMed only (medical papers)
             ['semantic_scholar'],  # Semantic Scholar only (most reliable)
-            ['semantic_scholar', 'arxiv'],  # Semantic Scholar first, then arXiv
-            ['arxiv', 'semantic_scholar'],  # Both sources
-            ['arxiv'],  # arXiv only (backup option)
+            ['arxiv'],  # arXiv only (CS/physics papers)
+            ['pubmed', 'semantic_scholar'],  # Medical + general academic
+            ['semantic_scholar', 'arxiv'],  # General academic + CS/physics
+            ['pubmed', 'arxiv'],  # Medical + CS/physics
+            ['arxiv', 'pubmed', 'semantic_scholar'],  # All sources
         ]
         
         for query_mod in query_strategies:
@@ -134,19 +465,30 @@ class QueryOptimizer:
         possible_actions = self.get_possible_actions(state)
         
         if random.random() < self.epsilon or state_key not in self.q_table:
-            # Exploration: strongly prefer actions that use Semantic Scholar first
+            # Exploration: prefer actions based on query domain
+            domain = self.detect_domain(' '.join(state.query_keywords))
+            
+            if domain == 'healthcare':
+                # For medical queries, prefer PubMed first
+                pubmed_first_actions = [action for action in possible_actions 
+                                      if action.source_selection and action.source_selection[0] == 'pubmed']
+                if pubmed_first_actions:
+                    return random.choice(pubmed_first_actions)
+                
+                # Fallback to any action with PubMed
+                pubmed_actions = [action for action in possible_actions 
+                                if 'pubmed' in action.source_selection]
+                if pubmed_actions:
+                    return random.choice(pubmed_actions)
+            
+            # For general/other queries, prefer Semantic Scholar first
             semantic_scholar_first_actions = [action for action in possible_actions 
                                             if action.source_selection and action.source_selection[0] == 'semantic_scholar']
             if semantic_scholar_first_actions:
                 return random.choice(semantic_scholar_first_actions)
             
-            # Fallback to any semantic scholar action
-            semantic_scholar_actions = [action for action in possible_actions 
-                                      if 'semantic_scholar' in action.source_selection]
-            if semantic_scholar_actions:
-                return random.choice(semantic_scholar_actions)
-            else:
-                return random.choice(possible_actions)
+            # Random fallback
+            return random.choice(possible_actions)
         else:
             # Exploitation: best known action
             action_values = self.q_table[state_key]
@@ -158,7 +500,15 @@ class QueryOptimizer:
                 if action_hash == int(best_action_hash):
                     return action
             
-            # Fallback to semantic scholar actions if hash not found
+            # Fallback if hash not found - prefer domain-appropriate sources
+            domain = self.detect_domain(' '.join(state.query_keywords))
+            if domain == 'healthcare':
+                pubmed_actions = [action for action in possible_actions 
+                                if 'pubmed' in action.source_selection]
+                if pubmed_actions:
+                    return random.choice(pubmed_actions)
+            
+            # General fallback to semantic scholar actions
             semantic_scholar_actions = [action for action in possible_actions 
                                       if 'semantic_scholar' in action.source_selection]
             if semantic_scholar_actions:
@@ -324,7 +674,7 @@ class RLEnhancedRAG(EnhancedRAG):
         best_reward = -float('inf')
         
         # Get initial state
-        available_sources = sources or ['arxiv', 'semantic_scholar']
+        available_sources = sources or ['arxiv', 'pubmed', 'semantic_scholar']
         state = self.rl_optimizer.get_state(query, available_sources)
         
         for iteration in range(max_iterations):

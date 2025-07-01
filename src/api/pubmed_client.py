@@ -31,7 +31,6 @@ class PubMedClient:
         self.rate_limit = config.api.PUBMED_RATE_LIMIT
         self.last_request_time = 0
         
-        # Headers for requests
         self.headers = {
             "User-Agent": "RAG-Research-Assistant/1.0 (mailto:your-email@example.com)",
         }
@@ -72,7 +71,6 @@ class PubMedClient:
                         xml_content = await response.text()
                         root = ET.fromstring(xml_content)
                         
-                        # Extract PMIDs
                         pmids = []
                         id_list = root.find(".//IdList")
                         if id_list is not None:
@@ -141,11 +139,9 @@ class PubMedClient:
     def _parse_article(self, article) -> Optional[PubMedPaper]:
         """Parse a single PubMed article"""
         try:
-            # Get PMID
             pmid_elem = article.find(".//PMID")
             pmid = pmid_elem.text if pmid_elem is not None else ""
             
-            # Get basic info
             medline_citation = article.find(".//MedlineCitation")
             if medline_citation is None:
                 return None
@@ -154,11 +150,9 @@ class PubMedClient:
             if citation_article is None:
                 return None
             
-            # Title
             title_elem = citation_article.find(".//ArticleTitle")
             title = title_elem.text if title_elem is not None else ""
             
-            # Abstract
             abstract_parts = []
             abstract_elem = citation_article.find(".//Abstract")
             if abstract_elem is not None:
@@ -167,7 +161,6 @@ class PubMedClient:
                         abstract_parts.append(abstract_text.text)
             abstract = " ".join(abstract_parts)
             
-            # Authors
             authors = []
             author_list = citation_article.find(".//AuthorList")
             if author_list is not None:
@@ -181,11 +174,9 @@ class PubMedClient:
                             name = f"{first_name.text} {name}"
                         authors.append(name)
             
-            # Journal
             journal_elem = citation_article.find(".//Journal/Title")
             journal = journal_elem.text if journal_elem is not None else ""
             
-            # Publication date
             pub_date = ""
             date_elem = citation_article.find(".//PubDate")
             if date_elem is not None:
@@ -200,7 +191,6 @@ class PubMedClient:
                         if day is not None:
                             pub_date += f"-{day.text}"
             
-            # DOI
             doi = None
             article_ids = article.findall(".//ArticleId")
             for article_id in article_ids:
@@ -208,7 +198,6 @@ class PubMedClient:
                     doi = article_id.text
                     break
             
-            # MeSH terms
             mesh_terms = []
             mesh_list = medline_citation.find(".//MeshHeadingList")
             if mesh_list is not None:
@@ -217,7 +206,6 @@ class PubMedClient:
                     if descriptor is not None:
                         mesh_terms.append(descriptor.text)
             
-            # Keywords
             keywords = []
             keyword_list = medline_citation.find(".//KeywordList")
             if keyword_list is not None:
@@ -242,73 +230,29 @@ class PubMedClient:
             logger.error(f"Error parsing PubMed article: {e}")
             return None
     
-    async def search(self, 
-                     query: str, 
-                     max_results: int = 20,
-                     sort_by: str = "relevance") -> List[PubMedPaper]:
-        """
-        Search PubMed for papers
-        
-        Args:
-            query: Search query
-            max_results: Maximum number of results
-            sort_by: Sort order ('relevance', 'pub_date', 'first_author')
-            
-        Returns:
-            List of PubMedPaper objects
-        """
+    async def search(self, query: str, max_results: int = 20, sort_by: str = "relevance") -> List[PubMedPaper]:
+        """Search PubMed for papers"""
         logger.info(f"Searching PubMed for: {query}")
         
-        # Step 1: Search for PMIDs
         pmids = await self._esearch(query, max_results)
         
         if not pmids:
             logger.info("No PMIDs found")
             return []
         
-        # Step 2: Fetch full records
         papers = await self._efetch(pmids)
         
         logger.info(f"Retrieved {len(papers)} papers from PubMed")
         return papers
     
-    async def search_by_mesh(self, 
-                             mesh_terms: List[str], 
-                             max_results: int = 20) -> List[PubMedPaper]:
-        """
-        Search by MeSH terms
-        
-        Args:
-            mesh_terms: List of MeSH terms
-            max_results: Maximum number of results
-            
-        Returns:
-            List of PubMedPaper objects
-        """
-        # Build MeSH query
+    async def search_by_mesh(self, mesh_terms: List[str], max_results: int = 20) -> List[PubMedPaper]:
+        """Search by MeSH terms"""
         mesh_query = " AND ".join(f'"{term}"[MeSH Terms]' for term in mesh_terms)
         return await self.search(mesh_query, max_results)
     
-    async def get_recent_papers(self, 
-                                query: str = "", 
-                                days: int = 7,
-                                max_results: int = 20) -> List[PubMedPaper]:
-        """
-        Get recent papers from PubMed
-        
-        Args:
-            query: Additional search terms
-            days: Number of days to look back
-            max_results: Maximum number of results
-            
-        Returns:
-            List of PubMedPaper objects
-        """
+    async def get_recent_papers(self, query: str = "", days: int = 7, max_results: int = 20) -> List[PubMedPaper]:
+        """Get recent papers from PubMed"""
         from datetime import datetime, timedelta
-        
-        # Calculate date range
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
         
         date_query = f'"last {days} days"[PDat]'
         
@@ -320,16 +264,7 @@ class PubMedClient:
         return await self.search(full_query, max_results, sort_by="pub_date")
     
     async def get_related_papers(self, pmid: str, max_results: int = 20) -> List[PubMedPaper]:
-        """
-        Get papers related to a specific PMID
-        
-        Args:
-            pmid: PubMed ID
-            max_results: Maximum number of results
-            
-        Returns:
-            List of related papers
-        """
+        """Get papers related to a specific PMID"""
         await self._rate_limit_wait()
         
         params = {
@@ -351,14 +286,12 @@ class PubMedClient:
                         xml_content = await response.text()
                         root = ET.fromstring(xml_content)
                         
-                        # Extract linked PMIDs
                         pmids = []
                         for link_set in root.findall(".//LinkSet"):
                             for link_set_db in link_set.findall(".//LinkSetDb"):
                                 for link in link_set_db.findall(".//Link/Id"):
                                     pmids.append(link.text)
                         
-                        # Remove the original PMID and fetch papers
                         if pmid in pmids:
                             pmids.remove(pmid)
                         
