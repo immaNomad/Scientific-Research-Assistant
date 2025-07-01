@@ -155,7 +155,7 @@ class RAGPipeline:
         except Exception as e:
             logger.error(f"Error searching PubMed: {e}")
             return []
-
+    
     async def _search_semantic_scholar(self, query: str, max_results: int) -> List[SearchResult]:
         """Search Semantic Scholar and convert to unified format"""
         try:

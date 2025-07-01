@@ -20,7 +20,7 @@ class APIConfig:
     # Semantic Scholar API settings
     SEMANTIC_SCHOLAR_BASE_URL: str = "https://api.semanticscholar.org/graph/v1"
     SEMANTIC_SCHOLAR_API_KEY: Optional[str] = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
-    SEMANTIC_SCHOLAR_RATE_LIMIT: int = 100  # requests per second (default)
+    SEMANTIC_SCHOLAR_RATE_LIMIT: int = 1  # requests per second (conservative for free tier)
 
 @dataclass
 class ModelConfig:
