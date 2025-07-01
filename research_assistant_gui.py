@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Research Assistant - Desktop GUI Application
-Beautiful chatbox interface with white background and Klein Blue accents
-Features: RAG (Retrieval-Augmented Generation) + RL (Reinforcement Learning) optimization
-"""
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import asyncio
@@ -17,7 +10,7 @@ from typing import Optional
 
 # Set up API keys from centralized config
 try:
-    from config.api_keys import GOOGLE_GEMINI_API_KEY
+    from config.api_key import GOOGLE_GEMINI_API_KEY
     if GOOGLE_GEMINI_API_KEY:
         os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_GEMINI_API_KEY
         print("✅ API key loaded from config/api_keys.py")
@@ -32,7 +25,7 @@ except ImportError:
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 try:
-    from src.rl.rl_optimizer import RLEnhancedRAG, ResearchAnalysis
+    from rl.rl_optimizer import RLEnhancedRAG, ResearchAnalysis
 except ImportError:
     print("Error: Could not import RL modules. Please ensure src/rl/rl_optimizer.py exists.")
     sys.exit(1)
@@ -138,38 +131,33 @@ class ResearchAssistantGUI:
     def create_widgets(self):
         """Create and arrange GUI widgets"""
         
-        # Main container with Klein Blue border
-        main_frame = tk.Frame(self.root, bg=WHITE, relief="solid", bd=2, highlightbackground=KLEIN_BLUE, highlightthickness=2)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main container - seamless
+        main_frame = tk.Frame(self.root, bg=WHITE)
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Main content area
         content_frame = tk.Frame(main_frame, bg=WHITE)
-        content_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Left panel (chat)
-        self.create_chat_panel(content_frame)
-        
-        # Right panel (info and controls)
+        # Left panel (info and controls)
         self.create_info_panel(content_frame)
         
-        # Bottom Klein Blue separator
-        bottom_sep = tk.Frame(main_frame, height=2, bg=KLEIN_BLUE)
-        bottom_sep.pack(fill=tk.X, pady=(10, 5))
+        # Separator between side panel and chat
+        separator = tk.Frame(content_frame, width=1, bg=LIGHT_GRAY)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 5))
         
-        # Bottom input area
-        self.create_input_area(main_frame)
+        # Right panel (chat with integrated search)
+        self.create_chat_panel(content_frame)
     
 
     
     def create_chat_panel(self, parent):
-        """Create the main chat interface"""
-        chat_frame = tk.Frame(parent, bg=WHITE)
-        chat_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        """Create the main chat interface with floating search"""
+        # Create chat container to hold both text and search
+        chat_container = tk.Frame(parent, bg=WHITE)
+        chat_container.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        # Chat display area with Klein Blue border
-        chat_container = tk.Frame(chat_frame, bg=KLEIN_BLUE, relief="solid", bd=2)
-        chat_container.pack(fill=tk.BOTH, expand=True)
-        
+        # Chat text area - in the chat container
         self.chat_text = scrolledtext.ScrolledText(
             chat_container,
             wrap=tk.WORD,
@@ -178,10 +166,65 @@ class ResearchAssistantGUI:
             font=("Lucida Sans", 13),
             relief="flat",
             borderwidth=0,
+            highlightthickness=0,  # Remove focus border
             padx=15,
             pady=15
         )
-        self.chat_text.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        self.chat_text.pack(fill=tk.BOTH, expand=True, pady=(0, 60))
+        
+        # Floating search bar container - positioned over the chat container
+        search_overlay = tk.Frame(chat_container, bg=WHITE)
+        # Position at bottom of chat container, full width
+        search_overlay.place(relx=0, rely=1.0, anchor="sw", relwidth=1.0)
+        
+        # Search input frame with subtle background
+        search_input_frame = tk.Frame(search_overlay, bg=LIGHT_GRAY, relief="flat", bd=1)
+        search_input_frame.pack(fill=tk.X, padx=15, pady=10)
+        
+        # Inner search container
+        search_inner = tk.Frame(search_input_frame, bg=WHITE)
+        search_inner.pack(fill=tk.X, padx=2, pady=2)
+        
+        # Text input - floating style
+        self.query_entry = tk.Text(search_inner, 
+                                 height=1,
+                                 bg=WHITE,
+                                 fg=DARK_GRAY,
+                                 font=("Lucida Sans", 14),
+                                 relief="flat",
+                                 bd=0,
+                                 padx=15,
+                                 pady=6,  # Match button padding
+                                 wrap=tk.NONE)
+        self.query_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Disable resizing of text widget
+        self.query_entry.bind("<Button-1>", lambda e: self.query_entry.focus_set())
+        self.query_entry.bind("<ButtonPress-1>", lambda e: self.query_entry.focus_set())
+        self.query_entry.bind("<B1-Motion>", lambda e: "break" if e.y > self.query_entry.winfo_height() - 10 else None)
+        
+        # Arrow button - matches search bar height
+        self.send_button = tk.Button(search_inner, 
+                                   text="→",
+                                   command=self.send_query,
+                                   bg=KLEIN_BLUE,  # Klein blue background for visibility
+                                   fg=WHITE,        # White arrow text
+                                   font=("Lucida Sans", 14, "bold"),  # Smaller arrow to match search bar
+                                   relief="flat", 
+                                   bd=0,
+                                   padx=12, 
+                                   pady=6,  # Smaller padding to match input height
+                                   activebackground=LIGHT_KLEIN_BLUE,
+                                   activeforeground=WHITE,
+                                   cursor="hand2")
+        self.send_button.pack(side=tk.RIGHT, fill=tk.Y, padx=(2, 2), pady=2)
+        
+        # Bind Enter key and prevent newline behavior
+        self.query_entry.bind("<Return>", lambda e: self._handle_enter(e))
+        self.query_entry.bind("<Key-Return>", lambda e: self._handle_enter(e))
+        
+        # Focus on input
+        self.query_entry.focus_set()
         
         # Configure text tags for styling
         self.chat_text.tag_configure("user", foreground=KLEIN_BLUE, font=("Lucida Sans", 13, "bold"))
@@ -195,15 +238,38 @@ class ResearchAssistantGUI:
     
     def create_info_panel(self, parent):
         """Create the information and controls panel"""
-        info_frame = tk.Frame(parent, bg=WHITE)
-        info_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 10))
-        info_frame.configure(width=320)
+        self.info_frame = tk.Frame(parent, bg=WHITE)
+        self.info_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 15))
+        self.info_frame.configure(width=320)
+        
+        # Toggle button at the top
+        toggle_frame = tk.Frame(self.info_frame, bg=WHITE)
+        toggle_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.toggle_button = tk.Button(toggle_frame,
+                                     text="▶ Hide Panel",
+                                     command=self.toggle_info_panel,
+                                     bg=KLEIN_BLUE, fg=WHITE,
+                                     font=("Lucida Sans", 11, "bold"),
+                                     relief="flat", bd=0,
+                                     pady=5,
+                                     activebackground=LIGHT_KLEIN_BLUE,
+                                     activeforeground=WHITE,
+                                     cursor="hand2")
+        self.toggle_button.pack(fill=tk.X)
+        
+        # Container for RL stats and controls
+        self.info_content = tk.Frame(self.info_frame, bg=WHITE)
+        self.info_content.pack(fill=tk.BOTH, expand=True)
         
         # RL Statistics
-        self.create_rl_stats_section(info_frame)
+        self.create_rl_stats_section(self.info_content)
         
         # Controls
-        self.create_controls_section(info_frame)
+        self.create_controls_section(self.info_content)
+        
+        # Track panel visibility
+        self.panel_visible = True
     
     def create_rl_stats_section(self, parent):
         """Create RL statistics display"""
@@ -286,54 +352,31 @@ class ResearchAssistantGUI:
     
 
     
-    def create_input_area(self, parent):
-        """Create the input area at the bottom"""
-        input_frame = tk.Frame(parent, bg=WHITE)
-        input_frame.pack(fill=tk.X, pady=(5, 10))
-        
-        # Input label
-        input_label = tk.Label(input_frame, text="💭 Research Query:", 
-                              bg=WHITE, fg=KLEIN_BLUE, font=("Lucida Sans", 14, "bold"))
-        input_label.pack(anchor=tk.W, padx=10)
-        
-        # Input area with Klein Blue border
-        input_container = tk.Frame(input_frame, bg=WHITE)
-        input_container.pack(fill=tk.X, padx=10, pady=(5, 0))
-        
-        # Text input with Klein Blue border
-        text_container = tk.Frame(input_container, bg=KLEIN_BLUE, relief="solid", bd=2)
-        text_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        
-        self.query_entry = tk.Text(text_container, 
-                                 height=3,
-                                 bg=WHITE,
-                                 fg=DARK_GRAY,
-                                 font=("Lucida Sans", 13),
-                                 relief="flat",
-                                 bd=0,
-                                 padx=10,
-                                 pady=8,
-                                 wrap=tk.WORD)
-        self.query_entry.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-        
-        # Send button with Klein Blue styling
-        self.send_button = tk.Button(input_container, 
-                                   text="🚀 Analyze\n(Ctrl+Enter)",
-                                   command=self.send_query,
-                                   bg=KLEIN_BLUE, fg=WHITE,
-                                   font=("Lucida Sans", 13, "bold"),
-                                   relief="flat", bd=0,
-                                   padx=20, pady=15,
-                                   activebackground=LIGHT_KLEIN_BLUE,
-                                   activeforeground=WHITE)
-        self.send_button.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Bind keyboard shortcuts
-        self.query_entry.bind("<Control-Return>", lambda e: self.send_query())
-        self.query_entry.bind("<Control-Key-Return>", lambda e: self.send_query())
-        
-        # Focus on input
-        self.query_entry.focus_set()
+
+
+    def _handle_enter(self, event):
+        """Handle Enter key press - send query and prevent newline"""
+        self.send_query()
+        return "break"  # Prevent default behavior (adding newline)
+    
+    def toggle_info_panel(self):
+        """Toggle the visibility of the RL info panel"""
+        if self.panel_visible:
+            # Hide the panel
+            self.info_content.pack_forget()
+            self.toggle_button.configure(text="☰", font=("Lucida Sans", 16, "bold"))  # Hamburger menu
+            self.info_frame.configure(width=50)  # Just wide enough for hamburger menu
+            self.panel_visible = False
+            # Force update to prevent arrow button from disappearing
+            self.root.update_idletasks()
+        else:
+            # Show the panel
+            self.info_content.pack(fill=tk.BOTH, expand=True)
+            self.toggle_button.configure(text="▶ Hide Panel", font=("Lucida Sans", 11, "bold"))
+            self.info_frame.configure(width=320)  # Original width
+            self.panel_visible = True
+            # Force update to prevent arrow button from disappearing
+            self.root.update_idletasks()
     
     def initialize_rl_system(self):
         """Initialize the RL system in a separate thread"""
@@ -500,7 +543,7 @@ class ResearchAssistantGUI:
 
         
         # Disable send button and show progress
-        self.send_button.configure(state="disabled", text="🔄 Analyzing...", bg=WARNING_ORANGE)
+        self.send_button.configure(state="disabled", text="⏳", fg=WARNING_ORANGE)
         
         # Process query in background
         def process_query():
@@ -526,7 +569,7 @@ class ResearchAssistantGUI:
                 self.root.after(0, lambda: self.add_error_message(error_msg))
             finally:
                 self.root.after(0, lambda: self.send_button.configure(
-                    state="normal", text="🚀 Analyze\n(Ctrl+Enter)", bg=KLEIN_BLUE))
+                    state="normal", text="→", fg=KLEIN_BLUE))
         
         threading.Thread(target=process_query, daemon=True).start()
     
