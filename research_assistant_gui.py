@@ -79,7 +79,6 @@ class ResearchAssistantGUI:
         self.chat_messages = []
 
         # UI default values
-        self.type_delay = 20
         self.placeholder_text = 'Search for papers online...'
         self.loading_emojis = ['⏳', '⌛']
         self.current_emoji_index = 0
@@ -507,30 +506,6 @@ class ResearchAssistantGUI:
                 print(f"RL init error: {e}")  # Also print to console for debugging
         
         threading.Thread(target=init_rl, daemon=True).start()
-    
-    # def _insert_char_by_char(self, content, index, tag, delay):
-    #     """Helper function for typing effect"""
-    #     if index < len(content):
-    #         char = content[index]
-    #         if tag:
-    #             self.chat_text.insert(tk.END, char, tag)
-    #         else:
-    #             self.chat_text.insert(tk.END, char)
-    #         self.chat_text.see(tk.END)
-    #         self.chat_text.configure(state=tk.DISABLED)
-    #         self.chat_text.update_idletasks()
-
-    #         # Schedule next character
-    #         self.chat_text.after(delay, lambda: self._insert_char_by_char(content, index + 1, tag, delay))
-    #     else:
-    #         self.chat_text.insert(tk.END, "\n\n")
-    #         self.chat_text.configure(state=tk.DISABLED)
-
-    # def type_message(self, content: str, tag: str = None, delay: int = 20):
-    #     """Insert content character by character with a typing effect"""
-    #     delay = self.type_delay
-    #     self.chat_text.configure(state=tk.NORMAL)
-    #     self._insert_char_by_char(content, 0, tag, delay)
 
     def add_message(self, message: ChatMessage):
         """Add a message to the chat"""
@@ -560,7 +535,6 @@ class ResearchAssistantGUI:
             self.format_papers_message(message)
         else:
             self.chat_text.insert(tk.END, f"{message.content}\n\n")
-            # self.type_message(message.content)
         
         self.chat_text.configure(state=tk.DISABLED)
         self.chat_text.see(tk.END)
@@ -573,7 +547,6 @@ class ResearchAssistantGUI:
         analysis = message.metadata.get('analysis')
         if not analysis:
             self.chat_text.insert(tk.END, f"{message.content}\n\n")
-            # self.type_message(message.content)
             return
         
         # Query
@@ -586,7 +559,6 @@ class ResearchAssistantGUI:
             reward = analysis.processing_metadata.get('best_reward', 0)
             self.chat_text.insert(tk.END, f"🤖 RL Optimization: ", "rl_stats")
             self.chat_text.insert(tk.END, f"{iterations} iterations, best reward: {reward:.3f}\n", "metadata")
-            # self.type_message(iterations + " iterations, best reward: {reward:.3f}\n", tag="metadata")
         
         # Papers found count only
         paper_count = len(analysis.papers)
