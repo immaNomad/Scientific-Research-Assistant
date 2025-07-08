@@ -6,6 +6,7 @@ import sys, os
 import json
 from datetime import datetime
 from typing import Optional
+import ctypes
 
 # Set up API keys from centralized config
 try:
@@ -48,11 +49,12 @@ WHITE = "#FFFFFF"
 # Warm background colors
 WARM_WHITE = "#FEFDF8"          # Soft warm white
 CREAM = "#FAF7F0"               # Light cream background
-WARM_BEIGE = "#F7F4ED"          # Warm beige for containers
+WARM_BEIGE = "#DEDDC9"          # Warm beige for containers
 SOFT_PEARL = "#F9F7F1"          # Pearl white with warmth
 WARM_GRAY = "#F2F0EB"           # Warm light gray
 
 LIGHT_GRAY = "#F5F5F5"
+MID_GRAY = "#989898"
 DARK_GRAY = "#333333"
 SUCCESS_GREEN = "#00C851"
 WARNING_ORANGE = "#FF8800"
@@ -75,6 +77,13 @@ class ResearchAssistantGUI:
         self.rl_rag = None
         self.last_analysis = None
         self.chat_messages = []
+
+        # UI default values
+        self.type_delay = 20
+        self.placeholder_text = 'Search for papers online...'
+        self.loading_emojis = ['⏳', '⌛']
+        self.current_emoji_index = 0
+        self.animating = False
         
         self.setup_window()
         self.setup_styles()
@@ -83,9 +92,20 @@ class ResearchAssistantGUI:
         
         # Track if first search has been made
         self.first_search_done = False
+
+        # Fix focus logic to show placeholder text at app startup
+        self.dummy = tk.Frame(self.root)
+        self.dummy.pack()
+        self.dummy.focus_set()
     
     def setup_window(self):
         """Configure the main window"""
+        # Make the application DPI-aware
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except:
+            pass # Ignore for non-Wndows devices
+
         self.root.title("Scientific Research Assistant")
         self.root.geometry("1200x800")
         self.root.configure(bg=WARM_WHITE)  # Warm background instead of stark white
@@ -164,9 +184,7 @@ class ResearchAssistantGUI:
         
         # Right panel (chat with integrated search)
         self.create_chat_panel(content_frame)
-    
-
-    
+        
     def create_chat_panel(self, parent):
         """Create the main chat interface with floating search"""
         # Create chat container to hold both text and search
@@ -255,9 +273,15 @@ class ResearchAssistantGUI:
         # Bind Enter key and prevent newline behavior
         self.query_entry.bind("<Return>", lambda e: self._handle_enter(e))
         self.query_entry.bind("<Key-Return>", lambda e: self._handle_enter(e))
+
+        # Add placeholder text
+        self.query_entry.insert('1.0', self.placeholder_text)
+        self.query_entry.config(fg=MID_GRAY)
+        self.query_entry.bind('<FocusIn>', self._on_focusin)
+        self.query_entry.bind('<FocusOut>', self._on_focusout)
         
         # Focus on input
-        self.query_entry.focus_set()
+        # self.query_entry.focus_set() # Commented out for the placeholder text display
         
         # Create centered welcome message overlay
         self.create_welcome_overlay(chat_container)
@@ -267,7 +291,7 @@ class ResearchAssistantGUI:
         self.chat_text.tag_configure("system", foreground=SUCCESS_GREEN, font=("Lucida Sans", 13, "bold"))
         self.chat_text.tag_configure("error", foreground=ERROR_RED, font=("Lucida Sans", 13, "bold"))
         self.chat_text.tag_configure("timestamp", foreground=LIGHT_KLEIN_BLUE, font=("Lucida Sans", 11))
-        self.chat_text.tag_configure("separator", foreground=KLEIN_BLUE)
+        self.chat_text.tag_configure("separator", foreground="#E8E3D6", font=("Lucida Sans", 11))
         self.chat_text.tag_configure("paper_title", foreground=KLEIN_BLUE, font=("Lucida Sans", 13, "bold"))
         self.chat_text.tag_configure("metadata", foreground=DARK_GRAY, font=("Lucida Sans", 11, "italic"))
         self.chat_text.tag_configure("rl_stats", foreground=KLEIN_BLUE, font=("Lucida Sans", 12, "bold"))
@@ -431,9 +455,17 @@ class ResearchAssistantGUI:
                            activebackground=LIGHT_KLEIN_BLUE, activeforeground=WHITE)
             btn.pack(fill=tk.X, pady=2)
     
+    def _on_focusin(self, event):
+        """Function to remove placeholder text once the user clicks the query box"""
+        if self.query_entry.get("1.0", "end-1c") == self.placeholder_text:
+            self.query_entry.delete("1.0", tk.END)  # delete all text
+            self.query_entry.config(fg=DARK_GRAY)
 
-    
-
+    def _on_focusout(self, event):
+        """Function to bring back placeholder text in empty query box"""
+        if self.query_entry.get("1.0", "end-1c") == '':
+            self.query_entry.insert("1.0", self.placeholder_text)
+            self.query_entry.config(fg=MID_GRAY)
 
     def _handle_enter(self, event):
         """Handle Enter key press - send query and prevent newline"""
@@ -476,6 +508,30 @@ class ResearchAssistantGUI:
         
         threading.Thread(target=init_rl, daemon=True).start()
     
+    # def _insert_char_by_char(self, content, index, tag, delay):
+    #     """Helper function for typing effect"""
+    #     if index < len(content):
+    #         char = content[index]
+    #         if tag:
+    #             self.chat_text.insert(tk.END, char, tag)
+    #         else:
+    #             self.chat_text.insert(tk.END, char)
+    #         self.chat_text.see(tk.END)
+    #         self.chat_text.configure(state=tk.DISABLED)
+    #         self.chat_text.update_idletasks()
+
+    #         # Schedule next character
+    #         self.chat_text.after(delay, lambda: self._insert_char_by_char(content, index + 1, tag, delay))
+    #     else:
+    #         self.chat_text.insert(tk.END, "\n\n")
+    #         self.chat_text.configure(state=tk.DISABLED)
+
+    # def type_message(self, content: str, tag: str = None, delay: int = 20):
+    #     """Insert content character by character with a typing effect"""
+    #     delay = self.type_delay
+    #     self.chat_text.configure(state=tk.NORMAL)
+    #     self._insert_char_by_char(content, 0, tag, delay)
+
     def add_message(self, message: ChatMessage):
         """Add a message to the chat"""
         self.chat_messages.append(message)
@@ -484,7 +540,7 @@ class ResearchAssistantGUI:
         self.chat_text.configure(state=tk.NORMAL)
         
         # Add Klein Blue separator line
-        self.chat_text.insert(tk.END, "─" * 60 + "\n", "separator")
+        self.chat_text.insert(tk.END, "─" * 58 + "\n", "separator")
         
         # Add timestamp and sender
         timestamp_text = f"[{message.timestamp}] "
@@ -504,6 +560,7 @@ class ResearchAssistantGUI:
             self.format_papers_message(message)
         else:
             self.chat_text.insert(tk.END, f"{message.content}\n\n")
+            # self.type_message(message.content)
         
         self.chat_text.configure(state=tk.DISABLED)
         self.chat_text.see(tk.END)
@@ -516,6 +573,7 @@ class ResearchAssistantGUI:
         analysis = message.metadata.get('analysis')
         if not analysis:
             self.chat_text.insert(tk.END, f"{message.content}\n\n")
+            # self.type_message(message.content)
             return
         
         # Query
@@ -528,6 +586,7 @@ class ResearchAssistantGUI:
             reward = analysis.processing_metadata.get('best_reward', 0)
             self.chat_text.insert(tk.END, f"🤖 RL Optimization: ", "rl_stats")
             self.chat_text.insert(tk.END, f"{iterations} iterations, best reward: {reward:.3f}\n", "metadata")
+            # self.type_message(iterations + " iterations, best reward: {reward:.3f}\n", tag="metadata")
         
         # Papers found count only
         paper_count = len(analysis.papers)
@@ -552,13 +611,13 @@ class ResearchAssistantGUI:
         # Complete summarized findings - show all content
         if analysis.summarized_findings:
             self.chat_text.insert(tk.END, f"\n📝 Detailed Summarized Findings:\n", "paper_title")
-            self.chat_text.insert(tk.END, "─" * 60 + "\n", "metadata")
+            self.chat_text.insert(tk.END, "─" * 58 + "\n", "metadata")
             self.chat_text.insert(tk.END, f"{analysis.summarized_findings}\n\n", "metadata")
         
         # Complete research hypothesis - show all content
         if analysis.hypothesis:
             self.chat_text.insert(tk.END, f"🔬 Research Hypothesis:\n", "paper_title")
-            self.chat_text.insert(tk.END, "─" * 60 + "\n", "metadata")
+            self.chat_text.insert(tk.END, "─" * 58 + "\n", "metadata")
             self.chat_text.insert(tk.END, f"{analysis.hypothesis}\n\n", "metadata")
         
         # Processing time
@@ -584,7 +643,7 @@ class ResearchAssistantGUI:
             self.chat_text.insert(tk.END, f"   Authors: {authors}\n", "metadata")
             
             if paper.doi:
-                self.chat_text.insert(tk.END, f"   DOI: {paper.doi}\n", "metadata")
+                self.chat_text.insert(tk.END, f"   DOI: doi.org/{paper.doi}\n", "metadata")
             
             self.chat_text.insert(tk.END, f"   Source: {paper.source.upper()}\n", "metadata")
             self.chat_text.insert(tk.END, "\n")
@@ -609,7 +668,9 @@ class ResearchAssistantGUI:
     def send_query(self):
         """Process and send the user query"""
         query = self.query_entry.get("1.0", tk.END).strip()
-        if not query:
+
+        # Do not send query if empty or placeholder text
+        if (not query) or (query == self.placeholder_text):
             return
         
         # Hide welcome overlay on first search
@@ -623,14 +684,24 @@ class ResearchAssistantGUI:
         
         # Clear input
         self.query_entry.delete("1.0", tk.END)
+        self.query_entry.event_generate("<FocusOut>")
         
         # Add user message
         self.add_user_message(query)
-        
 
-        
-        # Disable send button and show progress
-        self.send_button.configure(state="disabled", text="⏳", fg=WARNING_ORANGE)
+        # Emoji animation
+        def animate_loading():
+            if self.animating:
+                emoji = self.loading_emojis[self.current_emoji_index]
+                self.send_button.configure(text=emoji)
+                self.current_emoji_index = (self.current_emoji_index + 1) % len(self.loading_emojis)
+                self.root.after(500, animate_loading)
+
+        # Disable send button and enable animation
+        if not self.animating:
+            self.send_button.configure(state="disabled", fg=WARNING_ORANGE)
+            self.animating = True
+            animate_loading()
         
         # Process query in background
         def process_query():
@@ -657,8 +728,11 @@ class ResearchAssistantGUI:
             finally:
                 self.root.after(0, lambda: self.send_button.configure(
                     state="normal", text="→", fg=KLEIN_BLUE))
+                self.root.after(0, lambda: setattr(self, 'animating', False))
+                print("🔎 Search process done")
         
         threading.Thread(target=process_query, daemon=True).start()
+        print("🚪 Exited query thread")
     
     def display_analysis_result(self, analysis):
         """Display the analysis result in chat"""
@@ -797,8 +871,6 @@ Current exploration rate of {stats['epsilon']:.3f} means {stats['epsilon']*100:.
                 self.scrollbar_visible = False
             
             self.add_system_message("Chat cleared! Ready for new queries. 🧹")
-    
-
     
     def run(self):
         """Start the GUI application"""

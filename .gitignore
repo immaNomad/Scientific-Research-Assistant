@@ -36,7 +36,7 @@ venv.bak/
 .env.staging
 
 # API Keys Configuration (IMPORTANT - keeps API keys safe)
-# config/api_keys.py  # Commented out to include API keys in school project
+config/api_key.py
 
 # IDE
 .vscode/
@@ -225,9 +225,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# School project specific - allow API keys to be included
-# config/api_keys.py  # Commented out to include API keys in school project
 
 # Log files (keep directory structure)
 logs/*.log
