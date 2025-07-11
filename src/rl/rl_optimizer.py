@@ -13,7 +13,7 @@ from datetime import datetime
 from loguru import logger
 import random
 
-from src.rag.enhanced_rag import EnhancedRAG, PaperInfo, ResearchAnalysis
+from src.rag.local_enhanced_rag import LocalEnhancedRAG, PaperInfo, ResearchAnalysis
 
 @dataclass
 class RLState:
@@ -645,11 +645,11 @@ class QueryOptimizer:
             logger.error(f"Error loading RL experience: {e}")
             self.q_table = {}
 
-class RLEnhancedRAG(EnhancedRAG):
+class RLEnhancedRAG(LocalEnhancedRAG):
     """Enhanced RAG with Reinforcement Learning optimization"""
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db_path: str = "data/papers/papers.db"):
+        super().__init__(db_path)
         self.rl_optimizer = QueryOptimizer()
         self.rl_enabled = True
     
@@ -673,8 +673,8 @@ class RLEnhancedRAG(EnhancedRAG):
         best_analysis = None
         best_reward = -float('inf')
         
-        # Get initial state
-        available_sources = sources or ['arxiv', 'pubmed', 'semantic_scholar']
+        # Get initial state - only use local database sources
+        available_sources = sources or ['arxiv', 'semantic_scholar']  # Only sources in local database
         state = self.rl_optimizer.get_state(query, available_sources)
         
         for iteration in range(max_iterations):
