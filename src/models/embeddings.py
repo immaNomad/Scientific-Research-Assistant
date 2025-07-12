@@ -10,7 +10,7 @@ try:
     import pickle
     import os
     
-    from config.config import config
+    from config import config
     ML_AVAILABLE = True
     
     class EmbeddingManager:

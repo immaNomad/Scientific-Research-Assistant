@@ -1,0 +1,44 @@
+database:
+  analyze_frequency_hours: 24
+  auto_vacuum: true
+  backup_frequency_hours: 168
+  cache_size_mb: 64
+  connection_pool_size: 10
+  connection_timeout_seconds: 30
+  enable_wal_mode: true
+  temp_store_memory: true
+llm:
+  batch_requests: false
+  concurrent_requests: 10
+  fallback_enabled: true
+  max_tokens: 500
+  preferred_model: gemini
+  request_pooling: true
+  requests_per_minute: 60
+  temperature: 0.3
+  timeout_seconds: 30
+search:
+  abstract_weight: 1.5
+  cache_enabled: true
+  cache_ttl_seconds: 300
+  category_weight: 2.0
+  enable_stemming: false
+  enable_synonym_expansion: true
+  exact_match_bonus: 5.0
+  keyword_weight: 2.0
+  max_cache_size: 1000
+  max_results_per_query: 20
+  min_word_length: 3
+  parallel_search_enabled: true
+  search_timeout_seconds: 30
+  title_weight: 3.0
+system:
+  detailed_logging: false
+  enable_async_processing: true
+  enable_background_tasks: true
+  enable_health_checks: true
+  max_cpu_percent: 80.0
+  max_disk_usage_percent: 90.0
+  max_memory_percent: 80.0
+  metrics_retention_days: 30
+  performance_monitoring: true

@@ -21,7 +21,7 @@ if src_path not in sys.path:
 from database.local_search import LocalSearchEngine, SearchResult
 from models.embeddings import EmbeddingManager, VectorStore, DocumentChunker
 from models.llm_client import llm_manager, LLMResponse
-from config.config import config
+from config import config
 
 @dataclass
 class RAGResponse:

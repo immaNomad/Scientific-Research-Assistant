@@ -17,7 +17,7 @@ from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.rag.rag_pipeline import RAGPipeline, SearchResult, RAGResponse
-from config.config import config
+from config import config
 
 class ResearchAssistantCLI:
     """Command-line interface for the Research Assistant"""

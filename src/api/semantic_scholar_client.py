@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 from loguru import logger
 
-from config.config import config
+from config import config
 
 @dataclass
 class SemanticScholarPaper:

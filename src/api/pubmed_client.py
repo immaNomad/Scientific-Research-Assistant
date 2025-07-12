@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from loguru import logger
 import xml.etree.ElementTree as ET
 
-from config.config import config
+from config import config
 
 @dataclass
 class PubMedPaper:

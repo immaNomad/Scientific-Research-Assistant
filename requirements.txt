@@ -47,6 +47,12 @@ psutil>=5.9.0
 PyYAML>=6.0
 tqdm>=4.64.0
 
+# Local AI Model Training (Optional - for custom models)
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.12.0
+accelerate>=0.20.0
+
 # Development Tools (Optional)
 # pytest>=7.0.0
 # black>=22.0.0

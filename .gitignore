@@ -235,4 +235,6 @@ data/embeddings/*
 data/papers/*
 !data/cache/.gitkeep
 !data/embeddings/.gitkeep
-!data/papers/.gitkeep 
+!data/papers/.gitkeep # AI Models (too large for GitHub)
+data/models/
+data/models/

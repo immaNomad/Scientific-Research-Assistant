@@ -15,12 +15,18 @@ def main():
     # Set up environment variables
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Set up API keys from centralized config
+    # Check for local-only mode
     try:
         sys.path.append(script_dir)  # Add current directory to path
-        from config.api_key import GOOGLE_GEMINI_API_KEY
-        if GOOGLE_GEMINI_API_KEY:
-            os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_GEMINI_API_KEY
+        from config.api_keys import USE_LOCAL_MODELS_ONLY, GOOGLE_API_KEY
+        
+        if USE_LOCAL_MODELS_ONLY:
+            print("🔒 Running in LOCAL MODELS ONLY mode")
+            print("   • Complete privacy and control")
+            print("   • No external API calls")
+            print("   • Using custom trained local AI model")
+        elif GOOGLE_API_KEY:
+            os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_API_KEY
             print("✅ API key loaded from config/api_keys.py")
         else:
             print("⚠️  Warning: No API key found in config/api_keys.py")

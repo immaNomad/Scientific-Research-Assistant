@@ -8,7 +8,7 @@ from datetime import datetime
 from src.api import ArxivClient, SemanticScholarClient, PubMedClient
 from src.models.embeddings import EmbeddingManager, VectorStore, DocumentChunker
 from src.models.llm_client import llm_manager, LLMResponse
-from config.config import config
+from config import config
 
 @dataclass
 class SearchResult:

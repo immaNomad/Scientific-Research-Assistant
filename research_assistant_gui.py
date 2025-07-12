@@ -8,18 +8,24 @@ from datetime import datetime
 from typing import Optional
 import ctypes
 
-# Set up API keys from centralized config
+# Check for local-only mode configuration
 try:
-    from config.api_key import GOOGLE_GEMINI_API_KEY
-    if GOOGLE_GEMINI_API_KEY:
-        os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_GEMINI_API_KEY
+    from config.api_keys import USE_LOCAL_MODELS_ONLY, GOOGLE_API_KEY
+    
+    if USE_LOCAL_MODELS_ONLY:
+        print("🔒 Running in LOCAL MODELS ONLY mode")
+        print("   • Complete privacy and control")
+        print("   • No external API calls")
+        print("   • Using custom trained local AI model")
+    elif GOOGLE_API_KEY:
+        os.environ['GOOGLE_GEMINI_API_KEY'] = GOOGLE_API_KEY
         print("✅ API key loaded from config/api_keys.py")
     else:
         print("⚠️  Warning: No API key found in config/api_keys.py")
-        print("Please edit config/api_keys.py and add your API key")
+        print("   Please edit config/api_keys.py and add your API key")
 except ImportError:
     print("⚠️  Warning: config/api_keys.py not found")
-    print("Copy config/api_keys.example.py to config/api_keys.py and add your API key")
+    print("   Copy config/api_keys.example.py to config/api_keys.py and add your API key")
 
 # Add src to path
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
@@ -78,8 +84,15 @@ class ResearchAssistantGUI:
         self.last_analysis = None
         self.chat_messages = []
 
-        # UI default values
-        self.placeholder_text = 'Search for papers online...'
+        # UI default values - check if local mode
+        try:
+            from config.api_keys import USE_LOCAL_MODELS_ONLY
+            if USE_LOCAL_MODELS_ONLY:
+                self.placeholder_text = 'Search your local research database...'
+            else:
+                self.placeholder_text = 'Search for papers online...'
+        except ImportError:
+            self.placeholder_text = 'Search for papers online...'
         self.loading_emojis = ['⏳', '⌛']
         self.current_emoji_index = 0
         self.animating = False
@@ -249,6 +262,25 @@ class ResearchAssistantGUI:
         self.query_entry.bind("<ButtonPress-1>", lambda e: self.query_entry.focus_set())
         self.query_entry.bind("<B1-Motion>", lambda e: "break" if e.y > self.query_entry.winfo_height() - 10 else None)
         
+        # Embedded clear button - positioned inside the text area
+        self.clear_button = tk.Button(self.query_entry, 
+                                    text="×",
+                                    command=self.clear_search,
+                                    bg=WARM_WHITE,   # Warm background (matches search bar)
+                                    fg=MID_GRAY,     # Gray X text
+                                    font=("Lucida Sans", 14, "bold"),
+                                    relief="flat", 
+                                    bd=0,
+                                    highlightthickness=0,  # Remove any border
+                                    activebackground=ULTRA_LIGHT_KLEIN_BLUE,  # Very light blue on hover
+                                    activeforeground=KLEIN_BLUE,
+                                    cursor="hand2")
+        
+        # Position the clear button inside the text widget on the right side
+        self.clear_button.place(relx=1.0, rely=0.5, anchor="e", x=-30, y=0)
+        # Initially hide the clear button since we start with placeholder text
+        self.clear_button.place_forget()
+        
         # Embedded send button - positioned inside the text area
         self.send_button = tk.Button(self.query_entry, 
                                    text="→",
@@ -278,6 +310,10 @@ class ResearchAssistantGUI:
         self.query_entry.config(fg=MID_GRAY)
         self.query_entry.bind('<FocusIn>', self._on_focusin)
         self.query_entry.bind('<FocusOut>', self._on_focusout)
+        
+        # Monitor text changes for clear button visibility
+        self.query_entry.bind('<KeyRelease>', self._on_text_change)
+        self.query_entry.bind('<Button-1>', lambda e: self.root.after(10, self._update_clear_button_visibility))
         
         # Focus on input
         # self.query_entry.focus_set() # Commented out for the placeholder text display
@@ -455,21 +491,68 @@ class ResearchAssistantGUI:
             btn.pack(fill=tk.X, pady=2)
     
     def _on_focusin(self, event):
-        """Function to remove placeholder text once the user clicks the query box"""
-        if self.query_entry.get("1.0", "end-1c") == self.placeholder_text:
-            self.query_entry.delete("1.0", tk.END)  # delete all text
+        """Function to handle focus - select all text for easy replacement"""
+        current_text = self.query_entry.get("1.0", "end-1c")
+        
+        # If it's placeholder text, remove it
+        if current_text == self.placeholder_text:
+            self.query_entry.delete("1.0", tk.END)
             self.query_entry.config(fg=DARK_GRAY)
+            # Hide clear button for empty field
+            self.clear_button.place_forget()
+        else:
+            # If it's actual content (previous search), select all text so user can type over it
+            self.query_entry.tag_remove(tk.SEL, "1.0", tk.END)  # Clear any existing selection
+            self.query_entry.tag_add(tk.SEL, "1.0", "end-1c")  # Select all text
+            self.query_entry.mark_set(tk.INSERT, "end-1c")  # Set cursor at end
+            self.query_entry.config(fg=DARK_GRAY)
+            # Show clear button for actual content
+            self.clear_button.place(relx=1.0, rely=0.5, anchor="e", x=-30, y=0)
+        
+        # Schedule to update clear button visibility after any potential text changes
+        self.root.after(10, self._update_clear_button_visibility)
 
     def _on_focusout(self, event):
         """Function to bring back placeholder text in empty query box"""
-        if self.query_entry.get("1.0", "end-1c") == '':
+        current_text = self.query_entry.get("1.0", "end-1c")
+        if current_text == '' or current_text.strip() == '':
+            self.query_entry.delete("1.0", tk.END)
             self.query_entry.insert("1.0", self.placeholder_text)
             self.query_entry.config(fg=MID_GRAY)
+            # Hide clear button for placeholder text
+            self.clear_button.place_forget()
+        elif current_text != self.placeholder_text:
+            # Show clear button for actual content
+            self.clear_button.place(relx=1.0, rely=0.5, anchor="e", x=-30, y=0)
 
     def _handle_enter(self, event):
         """Handle Enter key press - send query and prevent newline"""
         self.send_query()
         return "break"  # Prevent default behavior (adding newline)
+    
+    def clear_search(self):
+        """Clear the search field and restore placeholder text"""
+        self.query_entry.delete("1.0", tk.END)
+        self.query_entry.insert('1.0', self.placeholder_text)
+        self.query_entry.config(fg=MID_GRAY)
+        # Hide clear button after clearing
+        self.clear_button.place_forget()
+        # Remove focus to show placeholder properly
+        self.dummy.focus_set()
+    
+    def _update_clear_button_visibility(self):
+        """Update clear button visibility based on content"""
+        current_text = self.query_entry.get("1.0", "end-1c")
+        
+        # Show clear button only if there's actual content (not placeholder)
+        if current_text and current_text != self.placeholder_text:
+            self.clear_button.place(relx=1.0, rely=0.5, anchor="e", x=-30, y=0)
+        else:
+            self.clear_button.place_forget()
+    
+    def _on_text_change(self, event):
+        """Handle text changes in the search box"""
+        self._update_clear_button_visibility()
     
     def toggle_info_panel(self):
         """Toggle the visibility of the RL info panel"""
@@ -654,9 +737,14 @@ class ResearchAssistantGUI:
             self.add_error_message("RL system not initialized yet. Please wait...")
             return
         
-        # Clear input
+        # Clear input and properly restore placeholder
         self.query_entry.delete("1.0", tk.END)
-        self.query_entry.event_generate("<FocusOut>")
+        self.query_entry.insert('1.0', self.placeholder_text)
+        self.query_entry.config(fg=MID_GRAY)
+        # Hide clear button since we have placeholder text
+        self.clear_button.place_forget()
+        # Remove focus to ensure placeholder is shown
+        self.dummy.focus_set()
         
         # Add user message
         self.add_user_message(query)
