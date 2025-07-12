@@ -42,6 +42,11 @@ xmltodict>=0.12.0
 # Vector Search (Optional - for advanced features)
 # faiss-cpu>=1.7.0
 
+# Optimization and Monitoring
+psutil>=5.9.0
+PyYAML>=6.0
+tqdm>=4.64.0
+
 # Development Tools (Optional)
 # pytest>=7.0.0
 # black>=22.0.0
