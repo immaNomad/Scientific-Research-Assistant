@@ -218,11 +218,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - The open-source AI community
 
 ## 📞 Support
-
-- 📧 Email: [your-email@example.com]
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/ai-research-assistant/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/ai-research-assistant/discussions)
-
+- 📧 Email: mdsortiz@mymail.mapua.edu.ph
+- 🐛 Issues: [GitHub Issues](https://github.com/immaNomad/Scientific-Research-Assistant/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/immaNomad/Scientific-research-assistant/discussions)
 ---
 
 **Made with ❤️ for researchers, by researchers** 
