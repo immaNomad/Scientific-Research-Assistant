@@ -200,6 +200,13 @@ Please report bugs by creating an issue with:
 - Error messages and logs
 - Steps to reproduce
 
+## 👥 Team Members
+
+- **Mark Daniel Ortiz** - Lead Developer & System Architect
+- **Jan Adrian Manzanero** - AI/ML Engineer & Model Optimization Specialist  
+- **Neil Emmanuel Macaro** - Database Engineer & Backend Developer
+- **Vinz Bequilla** - UI/UX Designer & Frontend Developer
+
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
