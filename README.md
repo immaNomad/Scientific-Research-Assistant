@@ -25,17 +25,20 @@ cd ai-research-assistant
 pip install -r requirements.txt
 ```
 
-### 3. Run Setup Script
+### 3. Setup the System
 ```bash
-python setup.py
-```
+# Create required directories
+mkdir -p data/papers data/models/local_ai data/cache data/embeddings data/feedback logs
 
-This will:
-- Create required directories
-- Download and index 146+ AI/ML research papers
-- Train custom AI models on your local machine
-- Set up the database and search optimization
-- Configure the system for local-only operation
+# Setup configuration
+cp config/api_keys.example.py config/api_keys.py
+
+# Populate database with research papers
+python scripts/populate_database.py
+
+# Train local AI models
+python scripts/train_local_model.py
+```
 
 ### 4. Launch the Application
 ```bash
@@ -46,27 +49,22 @@ python launch_gui.py
 python main.py
 ```
 
-## 🔧 Manual Setup (Alternative)
+## 🔧 Alternative Setup Options
 
-If the automatic setup doesn't work, you can set up manually:
+### Individual Step Commands
+If you prefer to run each step separately:
 
-### Create Directories
 ```bash
+# Step 1: Create directories
 mkdir -p data/papers data/models/local_ai data/cache data/embeddings data/feedback logs
-```
 
-### Setup Configuration
-```bash
+# Step 2: Setup configuration
 cp config/api_keys.example.py config/api_keys.py
-```
 
-### Populate Database
-```bash
+# Step 3: Populate database (takes 10-15 minutes)
 python scripts/populate_database.py
-```
 
-### Train Models
-```bash
+# Step 4: Train models (takes 20-30 minutes)
 python scripts/train_local_model.py
 ```
 
