@@ -1,4 +1,4 @@
-# 🚀 AI Research Assistant
+# 🚀 Scientific Research Assistant
 
 A privacy-focused, locally-running research assistant that helps you search, analyze, and generate insights from AI/ML research papers using custom trained models.
 
@@ -203,6 +203,13 @@ Please report bugs by creating an issue with:
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Team Members
+
+- **Mark Daniel Ortiz** - Lead Developer & System Architect
+- **Jan Adrian Manzanero** - AI/ML Engineer & Model Optimization Specialist  
+- **Neil Emmanuel Macaro** - Database Engineer & Backend Developer
+- **Vinz Bequilla** - UI/UX Designer & Frontend Developer
 
 ## 🙏 Acknowledgments
 
