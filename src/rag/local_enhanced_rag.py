@@ -19,6 +19,8 @@ if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 from database.local_search import LocalSearchEngine, SearchResult
+from database.inclusive_search import InclusiveSearchEngine
+from database.topic_search import TopicSearchEngine
 from models.llm_client import LLMManager, LLMResponse
 from rag.local_rag_pipeline import LocalRAGPipeline
 
@@ -53,11 +55,11 @@ class LocalEnhancedRAG:
     
     def __init__(self, db_path: str = "data/papers/papers.db"):
         self.local_rag = LocalRAGPipeline(db_path)
-        self.search_engine = LocalSearchEngine(db_path)
+        self.search_engine = TopicSearchEngine(db_path)  # Use topic-focused search
         self.llm_manager = LLMManager()
         self.target_paper_count = 5
         
-        logger.info("Initialized Local Enhanced RAG with database")
+        logger.info("Initialized Local Enhanced RAG with topic-focused search database")
         
     async def research_and_analyze(self, query: str, sources: List[str] = None) -> ResearchAnalysis:
         """
@@ -177,7 +179,7 @@ class LocalEnhancedRAG:
         return papers
     
     async def _generate_enhanced_summarized_findings(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate enhanced LLM-based summary of findings from local papers"""
+        """Generate enhanced LLM-based summary of findings from local papers in paragraph format"""
         logger.info("Generating enhanced summarized findings using LLM...")
         
         # Prepare enhanced context for LLM
@@ -186,309 +188,151 @@ class LocalEnhancedRAG:
         # Get database statistics for context
         db_stats = await self._get_db_stats()
         
-        # Generate comprehensive summary by breaking into focused sections
-        summary_sections = []
-        
-        # Section 1: Research Overview
-        overview_prompt = f"""
+        # Generate concise paragraph summary mentioning paper names
+        paragraph_prompt = f"""
 You are a research analyst examining {len(papers)} papers from a database of {db_stats.get('total_papers', 'many')} papers on "{query}".
 
 Papers analyzed:
 {papers_context}
 
-Provide a comprehensive research overview (300-400 words) that covers:
-1. **Main Research Themes**: What are the core topics and approaches?
-2. **Key Methodologies**: What research methods and techniques are used?
-3. **Current State**: What is the current state of research in this area?
+Create a concise paragraph summary (200-300 words) that mentions each paper by name and their key findings. Use the format:
+"'Paper Title 1' indicates that [key finding]... while 'Paper Title 2' shows [finding]... additionally 'Paper Title 3' demonstrates [finding]..."
 
-Research Overview:
+Focus on:
+- Mention each paper's title in single quotes
+- Connect findings with transitions like "while", "additionally", "furthermore", "moreover"
+- Keep it flowing as one cohesive paragraph
+- Highlight the most important findings from each paper
+
+Summarized Findings:
 """
         
-        # Section 2: Key Findings and Insights
-        findings_prompt = f"""
-Based on these {len(papers)} research papers about "{query}":
-
-{papers_context}
-
-Provide detailed key findings and insights (300-400 words) that cover:
-1. **Significant Results**: What important discoveries and results are reported?
-2. **Performance Metrics**: What performance improvements or benchmarks are achieved?
-3. **Technical Innovations**: What new techniques or approaches are introduced?
-4. **Cross-Paper Synthesis**: How do findings across papers relate to each other?
-
-Key Findings and Insights:
-"""
-        
-        # Section 3: Research Gaps and Future Directions
-        gaps_prompt = f"""
-Analyzing these {len(papers)} papers on "{query}":
-
-{papers_context}
-
-Identify research gaps and future opportunities (200-300 words):
-1. **Current Limitations**: What limitations are identified in current research?
-2. **Research Gaps**: What areas need further investigation?
-3. **Future Directions**: What promising research directions are suggested?
-4. **Opportunities**: What practical applications or improvements are possible?
-
-Research Gaps and Future Directions:
-"""
-        
-        # Generate each section
-        sections = [
-            ("Research Overview", overview_prompt),
-            ("Key Findings and Insights", findings_prompt),
-            ("Research Gaps and Future Directions", gaps_prompt)
-        ]
-        
-        for section_name, prompt in sections:
-            try:
-                response = await self.llm_manager.generate(prompt, max_tokens=450, temperature=0.6)
-                if response and hasattr(response, 'content') and response.content:
-                    summary_sections.append(f"## {section_name}\n\n{response.content.strip()}")
+        try:
+            response = await self.llm_manager.generate(paragraph_prompt, max_tokens=400, temperature=0.6)
+            if response and hasattr(response, 'content') and response.content:
+                content = response.content.strip()
+                # Check if the response follows the expected format (mentions paper titles in quotes)
+                if any(f"'{paper.title}'" in content for paper in papers):
+                    return content
                 else:
-                    logger.warning(f"Empty response for {section_name}")
-                    summary_sections.append(f"## {section_name}\n\n{self._generate_fallback_section(section_name, papers, query)}")
-            except Exception as e:
-                logger.error(f"Error generating {section_name}: {e}")
-                summary_sections.append(f"## {section_name}\n\n{self._generate_fallback_section(section_name, papers, query)}")
-        
-        # Combine all sections
-        comprehensive_summary = f"""# Enhanced Research Analysis: {query}
-
-*Comprehensive analysis of {len(papers)} high-quality papers from local database*
-
-{chr(10).join(summary_sections)}
-
----
-
-**Analysis Metadata:**
-- Papers analyzed: {len(papers)}
-- Database size: {db_stats.get('total_papers', 'Unknown')} papers
-- Sources: {', '.join(db_stats.get('source_distribution', {}).keys())}
-- Analysis timestamp: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-"""
-        
-        return comprehensive_summary
+                    logger.warning("LLM response doesn't follow expected paragraph format, using fallback")
+                    return self._generate_paragraph_fallback(papers, query)
+            else:
+                logger.warning("Empty response for summarized findings")
+                return self._generate_paragraph_fallback(papers, query)
+        except Exception as e:
+            logger.error(f"Error generating summarized findings: {e}")
+            return self._generate_paragraph_fallback(papers, query)
     
-    def _generate_fallback_section(self, section_name: str, papers: List[PaperInfo], query: str) -> str:
-        """Generate fallback content for a specific section"""
-        if section_name == "Research Overview":
-            return self._generate_overview_fallback(papers, query)
-        elif section_name == "Key Findings and Insights":
-            return self._generate_findings_fallback(papers, query)
-        elif section_name == "Research Gaps and Future Directions":
-            return self._generate_gaps_fallback(papers, query)
-        else:
-            return f"Analysis of {len(papers)} papers related to {query}."
-    
-    def _generate_overview_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate fallback overview section"""
-        sources = list(set([p.source for p in papers]))
-        venues = list(set([p.venue for p in papers if p.venue]))
-        total_citations = sum([p.citation_count or 0 for p in papers])
+    def _generate_paragraph_fallback(self, papers: List[PaperInfo], query: str) -> str:
+        """Generate fallback paragraph summary mentioning paper names"""
+        if not papers:
+            return f"No papers found for analysis of '{query}'."
         
-        return f"""The {len(papers)} papers analyzed provide a comprehensive view of current research in {query}. The research spans multiple sources ({', '.join(sources)}) and represents work from {len(venues)} different venues, indicating broad academic interest.
-
-**Research Diversity**: The papers demonstrate methodological diversity, with approaches ranging from theoretical frameworks to practical implementations. With {total_citations} total citations across all papers, the work represents impactful research that has influenced the field.
-
-**Current Focus Areas**: The research covers key themes including:
-- Methodological innovations in {query}
-- Performance optimization and benchmarking
-- Real-world applications and case studies
-- Cross-disciplinary approaches and integration
-
-**Research Quality**: The selected papers represent high-quality research with established impact in the academic community, providing a solid foundation for understanding the current state of {query}."""
-    
-    def _generate_findings_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate fallback findings section"""
-        avg_citations = sum([p.citation_count or 0 for p in papers]) / len(papers) if papers else 0
-        recent_papers = [p for p in papers if p.published_date and p.published_date > '2020']
+        # Create paragraph mentioning each paper
+        findings_parts = []
         
-        return f"""The analysis reveals several significant findings across the {len(papers)} papers:
-
-**Performance Achievements**: The research demonstrates consistent improvements in {query} performance, with papers achieving notable results in their respective domains. The average citation count of {avg_citations:.1f} indicates research with measurable impact.
-
-**Technical Innovations**: Key technical contributions include:
-- Novel algorithmic approaches for {query}
-- Improved methodological frameworks
-- Enhanced performance metrics and evaluation techniques
-- Integration of multiple research domains
-
-**Research Evolution**: With {len(recent_papers)} papers published recently, the field shows active development and continued innovation. The research builds upon established foundations while exploring new frontiers.
-
-**Cross-Paper Insights**: The papers demonstrate complementary approaches to {query}, with findings that reinforce and extend each other's contributions. This synthesis reveals a maturing field with clear research directions and practical applications."""
-    
-    def _generate_gaps_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate fallback gaps section"""
-        sources = list(set([p.source for p in papers]))
+        for i, paper in enumerate(papers):
+            title = paper.title
+            # Extract key info from abstract
+            abstract_sentences = paper.abstract.split('.')[:2]  # First 2 sentences
+            key_finding = '. '.join(abstract_sentences).strip()
+            
+            if i == 0:
+                findings_parts.append(f"'{title}' indicates that {key_finding}")
+            elif i == len(papers) - 1:
+                findings_parts.append(f"finally '{title}' demonstrates {key_finding}")
+            else:
+                transition = ["while", "additionally", "furthermore", "moreover"][i % 4]
+                findings_parts.append(f"{transition} '{title}' shows {key_finding}")
         
-        return f"""Analysis of the {len(papers)} papers reveals several important research gaps and opportunities:
-
-**Current Limitations**: While the research demonstrates strong theoretical foundations, practical applications remain limited. The papers identify challenges in scalability, generalization, and real-world deployment of {query} solutions.
-
-**Research Gaps**: Key areas requiring further investigation include:
-- Cross-domain validation and generalization
-- Long-term performance and stability studies
-- Integration with emerging technologies
-- Ethical considerations and responsible implementation
-
-**Future Opportunities**: The research suggests promising directions for future work:
-- Interdisciplinary collaboration across {len(sources)} research communities
-- Development of standardized evaluation frameworks
-- Exploration of novel application domains
-- Integration with cutting-edge technologies
-
-**Practical Impact**: Future research should focus on bridging the gap between theoretical advances and practical applications, ensuring that {query} research translates into real-world benefits and solutions."""
-
+        paragraph = ". ".join(findings_parts) + "."
+        
+        # Add metadata
+        source_count = len(set(paper.source for paper in papers))
+        citation_total = sum(paper.citation_count or 0 for paper in papers)
+        
+        metadata = f" This analysis draws from {len(papers)} papers across {source_count} research sources with a combined citation count of {citation_total}, providing comprehensive insights into {query}."
+        
+        return paragraph + metadata
+    
     async def _generate_enhanced_research_hypothesis(self, papers: List[PaperInfo], query: str, summary: str) -> str:
-        """Generate enhanced research hypothesis based on local papers and summary"""
+        """Generate enhanced research hypothesis based on local papers and summary in numbered format"""
         logger.info("Generating enhanced research hypothesis using LLM...")
         
         papers_context = self._prepare_enhanced_papers_context(papers)
         db_stats = await self._get_db_stats()
         
-        # Generate hypothesis in focused sections
-        hypothesis_sections = []
-        
-        # Section 1: Core hypothesis statement
+        # Generate numbered hypothesis list
         hypothesis_prompt = f"""
 Based on analysis of {len(papers)} research papers on "{query}" from a database of {db_stats.get('total_papers', 'many')} papers:
 
 Research Summary:
-{summary[:800]}...
+{summary[:600]}...
 
 Papers Context:
 {papers_context}
 
-Generate a novel, testable research hypothesis (250-300 words) that:
-1. **Builds on existing work** from the analyzed papers
-2. **Identifies clear gaps** in current research
-3. **Proposes specific innovation** or new approach
-4. **Has measurable impact** potential
+Generate 3-5 numbered research hypotheses that:
+1. Are specific and testable
+2. Build on existing work from the analyzed papers
+3. Identify clear research gaps
+4. Propose novel approaches or improvements
+5. Are feasible for future research
 
-Core Research Hypothesis:
+Format as a numbered list:
+1. [First hypothesis]
+2. [Second hypothesis]
+3. [Third hypothesis]
+etc.
+
+Each hypothesis should be 1-2 sentences and focus on a specific aspect of {query}.
+
+Research Hypotheses:
 """
         
-        # Section 2: Scientific rationale
-        rationale_prompt = f"""
-For the research area "{query}", based on these {len(papers)} papers:
-
-{papers_context}
-
-Provide detailed scientific rationale (200-250 words) that explains:
-1. **Evidence base** from the analyzed papers
-2. **Theoretical foundation** for the hypothesis
-3. **Why this approach is novel** and important
-4. **Expected contributions** to the field
-
-Scientific Rationale:
-"""
-        
-        # Section 3: Methodology and validation
-        methodology_prompt = f"""
-Based on the research insights from {len(papers)} papers on "{query}":
-
-{papers_context}
-
-Propose research methodology and validation approach (200-250 words):
-1. **Experimental design** and approach
-2. **Validation methods** and metrics
-3. **Expected outcomes** and success criteria
-4. **Timeline and feasibility** considerations
-
-Research Methodology:
-"""
-        
-        # Generate each section
-        sections = [
-            ("Core Research Hypothesis", hypothesis_prompt),
-            ("Scientific Rationale", rationale_prompt),
-            ("Research Methodology", methodology_prompt)
-        ]
-        
-        for section_name, prompt in sections:
-            try:
-                response = await self.llm_manager.generate(prompt, max_tokens=350, temperature=0.7)
-                if response and hasattr(response, 'content') and response.content:
-                    hypothesis_sections.append(f"## {section_name}\n\n{response.content.strip()}")
+        try:
+            response = await self.llm_manager.generate(hypothesis_prompt, max_tokens=400, temperature=0.7)
+            if response and hasattr(response, 'content') and response.content:
+                content = response.content.strip()
+                # Check if the response follows the expected format (numbered list)
+                if any(f"{i}." in content for i in range(1, 6)):
+                    return content
                 else:
-                    logger.warning(f"Empty response for {section_name}")
-                    hypothesis_sections.append(f"## {section_name}\n\n{self._generate_hypothesis_fallback_section(section_name, papers, query)}")
-            except Exception as e:
-                logger.error(f"Error generating {section_name}: {e}")
-                hypothesis_sections.append(f"## {section_name}\n\n{self._generate_hypothesis_fallback_section(section_name, papers, query)}")
-        
-        # Combine all sections
-        comprehensive_hypothesis = f"""# Novel Research Hypothesis: {query}
-
-*Based on comprehensive analysis of {len(papers)} research papers*
-
-{chr(10).join(hypothesis_sections)}
-
----
-
-**Hypothesis Metadata:**
-- Based on {len(papers)} analyzed papers
-- Database: {db_stats.get('total_papers', 'Unknown')} total papers
-- Research domains: {', '.join(db_stats.get('source_distribution', {}).keys())}
-- Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-"""
-        
-        return comprehensive_hypothesis
+                    logger.warning("LLM response doesn't follow expected numbered format, using fallback")
+                    return self._generate_numbered_hypothesis_fallback(papers, query)
+            else:
+                logger.warning("Empty response for hypothesis")
+                return self._generate_numbered_hypothesis_fallback(papers, query)
+        except Exception as e:
+            logger.error(f"Error generating hypothesis: {e}")
+            return self._generate_numbered_hypothesis_fallback(papers, query)
     
-    def _generate_hypothesis_fallback_section(self, section_name: str, papers: List[PaperInfo], query: str) -> str:
-        """Generate fallback hypothesis section"""
-        if section_name == "Core Research Hypothesis":
-            return self._generate_core_hypothesis_fallback(papers, query)
-        elif section_name == "Scientific Rationale":
-            return self._generate_rationale_fallback(papers, query)
-        elif section_name == "Research Methodology":
-            return self._generate_methodology_fallback(papers, query)
-        else:
-            return f"Research hypothesis component for {query} based on {len(papers)} papers."
-    
-    def _generate_core_hypothesis_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate core hypothesis fallback"""
-        sources = list(set([p.source for p in papers]))
-        total_citations = sum([p.citation_count or 0 for p in papers])
+    def _generate_numbered_hypothesis_fallback(self, papers: List[PaperInfo], query: str) -> str:
+        """Generate fallback numbered hypothesis"""
+        if not papers:
+            return f"1. No hypotheses can be generated without relevant papers for '{query}'."
         
-        return f"""**Hypothesis Statement**: By synthesizing methodological insights from {len(papers)} high-impact research papers (total citations: {total_citations}), we hypothesize that a novel integrated approach to {query} can be developed that addresses current limitations while achieving superior performance.
-
-**Innovation Focus**: The hypothesis proposes combining complementary techniques identified across {len(sources)} research sources, creating a unified framework that leverages the strengths of existing approaches while mitigating their individual limitations.
-
-**Testable Prediction**: This integrated approach will demonstrate measurable improvements in key performance metrics compared to current state-of-the-art methods, with particular emphasis on generalization, scalability, and practical applicability.
-
-**Research Significance**: The hypothesis addresses critical gaps identified in the literature analysis, offering a pathway to advance the field of {query} through evidence-based innovation grounded in comprehensive research synthesis."""
-    
-    def _generate_rationale_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate rationale fallback"""
-        venues = list(set([p.venue for p in papers if p.venue]))
-        authors_count = sum([len(p.authors) for p in papers])
+        # Generate numbered hypotheses based on papers
+        hypotheses = []
         
-        return f"""**Evidence Foundation**: The scientific rationale is grounded in analysis of {len(papers)} peer-reviewed papers from {len(venues)} distinct research venues, representing work by {authors_count} researchers across the field.
-
-**Theoretical Basis**: Current research demonstrates strong individual contributions but lacks integrative frameworks that can harness collective insights. The papers reveal complementary approaches that, when combined, could address fundamental challenges in {query}.
-
-**Innovation Justification**: The novelty lies in synthesizing successful methodologies from diverse research contexts, creating a unified approach that transcends the limitations of individual techniques. This integration is theoretically sound and practically feasible.
-
-**Field Impact**: The approach addresses persistent challenges identified across multiple research papers, offering potential for significant advancement in {query} research and applications."""
-    
-    def _generate_methodology_fallback(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate methodology fallback"""
-        sources = list(set([p.source for p in papers]))
+        # Extract key themes from papers
+        sources = list(set(paper.source for paper in papers))
+        citation_total = sum(paper.citation_count or 0 for paper in papers)
         
-        return f"""**Experimental Design**: The research methodology involves systematic validation using datasets and evaluation frameworks established in the {len(papers)} analyzed papers, ensuring reproducibility and comparability with existing work.
-
-**Validation Approach**: 
-- Comparative analysis against baseline methods from reviewed papers
-- Cross-validation using multiple evaluation metrics
-- Scalability testing across different problem domains
-- Performance benchmarking against state-of-the-art approaches
-
-**Success Metrics**: Success will be measured through quantitative improvements in key performance indicators identified in the literature, including accuracy, efficiency, generalization, and practical applicability.
-
-**Implementation Timeline**: The research can be conducted in phases, starting with proof-of-concept validation and progressing to comprehensive evaluation, with each phase building upon insights from the analyzed papers.**"""
+        # Generate specific numbered hypotheses
+        hypotheses.append(f"1. Integrating methodologies from the analyzed {len(papers)} papers on {query} could yield a hybrid approach that outperforms individual techniques by combining their complementary strengths.")
+        
+        hypotheses.append(f"2. The gaps identified in current {query} research suggest that cross-domain validation using datasets from multiple sources ({', '.join(sources)}) would significantly improve generalization capabilities.")
+        
+        hypotheses.append(f"3. Building upon the findings from these high-impact papers (combined {citation_total} citations), a novel framework could be developed to address the scalability limitations mentioned across multiple studies.")
+        
+        hypotheses.append(f"4. The convergence of themes across different research sources indicates that a unified theoretical model for {query} could provide better explanatory power than current fragmented approaches.")
+        
+        if len(papers) >= 4:
+            hypotheses.append(f"5. Future research could benefit from investigating the unexplored intersections between the methodologies presented in these {len(papers)} papers to discover novel applications for {query}.")
+        
+        return "\n".join(hypotheses)
     
     def _prepare_enhanced_papers_context(self, papers: List[PaperInfo]) -> str:
         """Prepare enhanced context from papers for LLM processing"""

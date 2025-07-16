@@ -16,9 +16,10 @@ from typing import List, Dict, Optional
 import random
 
 # Add src and config to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add src and project root to path
+project_root = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, os.path.join(project_root, 'src'))
+sys.path.insert(0, project_root)
 
 from database.paper_db import PaperDatabase, Paper
 from database.paper_collector import PaperCollector

@@ -659,7 +659,8 @@ class ResearchAssistantGUI:
                         authors += " et al."
                     self.chat_text.insert(tk.END, f"   Authors: {authors}\n", "metadata")
                 if paper.doi:
-                    self.chat_text.insert(tk.END, f"   DOI: {paper.doi}\n", "metadata")
+                    self.chat_text.insert(tk.END, f"   🔗 DOI: {paper.doi}\n", "metadata")
+                    self.chat_text.insert(tk.END, f"   📄 URL: https://doi.org/{paper.doi}\n", "metadata")
                 self.chat_text.insert(tk.END, f"   Source: {paper.source.upper()}\n", "metadata")
                 self.chat_text.insert(tk.END, "\n")
         
@@ -698,7 +699,8 @@ class ResearchAssistantGUI:
             self.chat_text.insert(tk.END, f"   Authors: {authors}\n", "metadata")
             
             if paper.doi:
-                self.chat_text.insert(tk.END, f"   DOI: doi.org/{paper.doi}\n", "metadata")
+                self.chat_text.insert(tk.END, f"   🔗 DOI: {paper.doi}\n", "metadata")
+                self.chat_text.insert(tk.END, f"   📄 URL: https://doi.org/{paper.doi}\n", "metadata")
             
             self.chat_text.insert(tk.END, f"   Source: {paper.source.upper()}\n", "metadata")
             self.chat_text.insert(tk.END, "\n")

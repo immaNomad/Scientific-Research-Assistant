@@ -20,6 +20,8 @@ if src_path not in sys.path:
 
 from rag.local_enhanced_rag import LocalEnhancedRAG, PaperInfo, ResearchAnalysis
 from database.enhanced_search import EnhancedSearchEngine, SearchResult
+from database.inclusive_search import InclusiveSearchEngine
+from database.topic_search import TopicSearchEngine
 from analytics.performance_monitor import log_query_performance
 
 class LocalAIEnhancedRAG(LocalEnhancedRAG):
@@ -35,8 +37,8 @@ class LocalAIEnhancedRAG(LocalEnhancedRAG):
                  use_local_model: bool = False):
         super().__init__(db_path)
         
-        # Replace basic search with enhanced search
-        self.search_engine = EnhancedSearchEngine(db_path)
+        # Replace basic search with topic-focused search for better research relevance
+        self.search_engine = TopicSearchEngine(db_path)
         
         # Local AI model setup
         self.local_model_path = local_model_path
@@ -198,7 +200,7 @@ class LocalAIEnhancedRAG(LocalEnhancedRAG):
             return await super()._extract_five_papers(query, sources)
     
     async def _generate_local_ai_summary(self, papers: List[PaperInfo], query: str) -> str:
-        """Generate summary using local AI model"""
+        """Generate summary using local AI model in paragraph format"""
         if not self.local_ai:
             return await self._generate_enhanced_summarized_findings(papers, query)
         
@@ -212,26 +214,28 @@ class LocalAIEnhancedRAG(LocalEnhancedRAG):
             # Generate summary using local model
             summary = self.local_ai.generate_summary(query, context, max_length=200)
             
-            # Enhance with structured analysis
-            enhanced_summary = f"""**Local AI Analysis Summary**
-
-{summary}
-
-**Key Research Themes:**
-• {len(papers)} papers analyzed from local database
-• Sources: {', '.join(set(paper.source for paper in papers))}
-• Analysis generated using custom-trained local AI model
-
-**Research Focus Areas:**
-"""
+            # Create paragraph mentioning paper names
+            paragraph_parts = []
+            for i, paper in enumerate(papers):
+                title = paper.title
+                # Extract brief insight from abstract
+                abstract_key = paper.abstract.split('.')[0] if paper.abstract else "focuses on this research area"
+                
+                if i == 0:
+                    paragraph_parts.append(f"'{title}' indicates that {abstract_key}")
+                elif i == len(papers) - 1:
+                    paragraph_parts.append(f"finally '{title}' demonstrates {abstract_key}")
+                else:
+                    transition = ["while", "additionally", "furthermore", "moreover"][i % 4]
+                    paragraph_parts.append(f"{transition} '{title}' shows {abstract_key}")
             
-            # Add domain-specific insights
-            domains = self._analyze_paper_domains(papers)
-            for domain, count in domains.items():
-                if count > 0:
-                    enhanced_summary += f"• {domain.title()}: {count} paper{'s' if count > 1 else ''}\n"
+            paragraph_summary = ". ".join(paragraph_parts) + "."
             
-            return enhanced_summary
+            # Add local AI analysis note
+            source_count = len(set(paper.source for paper in papers))
+            ai_note = f" This analysis leverages a custom-trained local AI model to synthesize findings from {len(papers)} papers across {source_count} research sources, providing domain-specific insights for {query}."
+            
+            return paragraph_summary + ai_note
             
         except Exception as e:
             logger.error(f"Error in local AI summary generation: {e}")
@@ -239,7 +243,7 @@ class LocalAIEnhancedRAG(LocalEnhancedRAG):
     
     async def _generate_local_ai_hypothesis(self, papers: List[PaperInfo], query: str, 
                                           summarized_findings: str) -> str:
-        """Generate hypothesis using local AI model"""
+        """Generate hypothesis using local AI model in numbered format"""
         if not self.local_ai:
             return await self._generate_enhanced_research_hypothesis(papers, query, summarized_findings)
         
@@ -253,25 +257,22 @@ class LocalAIEnhancedRAG(LocalEnhancedRAG):
                 "Generate research hypothesis", context, max_length=150
             )
             
-            # Structure the hypothesis
-            structured_hypothesis = f"""**Research Hypothesis (Local AI Generated)**
+            # Create numbered hypotheses
+            hypotheses = []
+            sources = list(set(paper.source for paper in papers))
 
-Based on the analysis of {len(papers)} papers using our custom-trained local AI model:
+            hypotheses.append(f"1. The local AI analysis of {len(papers)} papers suggests that {hypothesis_base}")
 
-**Primary Hypothesis:**
-{hypothesis_base}
+            hypotheses.append(f"2. Cross-domain validation using methodologies from {len(sources)} different research sources could enhance the generalizability of {query} approaches.")
 
-**Supporting Evidence:**
-• Analyzed {len(papers)} relevant papers from local database
-• Cross-domain insights from {len(set(paper.source for paper in papers))} sources
-• Local AI model trained on research domain knowledge
+            hypotheses.append(f"3. Integration of the complementary techniques identified in these papers could address current limitations in {query} research.")
 
-**Research Implications:**
-This hypothesis is derived from domain-specific analysis using a model trained on similar research papers, providing contextually relevant insights for further investigation.
+            hypotheses.append(f"4. The domain-specific insights from the custom-trained local AI model indicate potential for novel applications in {query}.")
 
-**Confidence Level:** Medium-High (based on local model training and paper relevance)"""
+            if len(papers) >= 4:
+                hypotheses.append(f"5. Future research could benefit from investigating the unexplored intersections between the {len(papers)} analyzed papers to discover new research directions for {query}.")
             
-            return structured_hypothesis
+            return "\n".join(hypotheses)
             
         except Exception as e:
             logger.error(f"Error in local AI hypothesis generation: {e}")

@@ -16,14 +16,16 @@ from datetime import datetime
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from src.rag.rag_pipeline import RAGPipeline, SearchResult, RAGResponse
+from src.rag.local_enhanced_rag import LocalEnhancedRAG
+from src.database.topic_search import TopicSearchEngine
 from config import config
 
 class ResearchAssistantCLI:
     """Command-line interface for the Research Assistant"""
     
     def __init__(self):
-        self.pipeline = RAGPipeline()
+        self.pipeline = LocalEnhancedRAG()
+        self.search_engine = TopicSearchEngine()
         self.setup_logging()
     
     def setup_logging(self):
@@ -75,7 +77,7 @@ Examples:
         """
         print(help_text)
     
-    def format_search_results(self, results: List[SearchResult]) -> str:
+    def format_search_results(self, results) -> str:
         """Format search results for display"""
         if not results:
             return "No papers found."
@@ -88,11 +90,12 @@ Examples:
             if len(paper.authors) > 3:
                 formatted += f" (+{len(paper.authors)-3} more)"
             formatted += f"\n   Source: {paper.source.upper()}"
-            if paper.citation_count:
+            if hasattr(paper, 'citation_count') and paper.citation_count:
                 formatted += f" | Citations: {paper.citation_count}"
-            if paper.published_date:
+            if hasattr(paper, 'published_date') and paper.published_date:
                 formatted += f" | Published: {paper.published_date[:10]}"
-            formatted += f" | Relevance: {paper.relevance_score:.3f}"
+            if hasattr(paper, 'relevance_score'):
+                formatted += f" | Relevance: {paper.relevance_score:.3f}"
             formatted += f"\n   URL: {paper.url}"
             formatted += f"\n   Abstract: {paper.abstract[:200]}..."
             formatted += "\n" + "-"*80
@@ -102,37 +105,44 @@ Examples:
         
         return formatted
     
-    def format_response(self, response: RAGResponse) -> str:
-        """Format complete RAG response for display"""
+    def format_analysis_response(self, response) -> str:
+        """Format complete analysis response for display"""
         formatted = f"\n🔍 Query: {response.query}\n"
         formatted += "="*80 + "\n"
         
         # Papers
-        formatted += self.format_search_results(response.retrieved_papers)
+        formatted += f"\n📚 Retrieved Papers ({len(response.papers)}):\n{'-'*40}\n"
+        for i, paper in enumerate(response.papers, 1):
+            formatted += f"{i}. {paper.title}\n"
+            formatted += f"   Authors: {', '.join(paper.authors)}\n"
+            formatted += f"   Source: {paper.source}\n"
+            if paper.doi:
+                formatted += f"   DOI: {paper.doi}\n"
+            formatted += f"   URL: {paper.url}\n"
+            formatted += f"   Relevance: {getattr(paper, 'relevance_score', 'N/A')}\n\n"
         
         # Summary
-        formatted += f"\n📝 Summary:\n{'-'*40}\n"
-        formatted += response.summary + "\n"
+        formatted += f"\n📝 Summarized Findings:\n{'-'*40}\n"
+        formatted += response.summarized_findings + "\n"
         
-        # Hypotheses
-        if response.hypotheses:
-            formatted += f"\n💡 Research Hypotheses:\n{'-'*40}\n"
-            for i, hypothesis in enumerate(response.hypotheses, 1):
-                formatted += f"{i}. {hypothesis}\n"
+        # Hypothesis
+        if response.research_hypothesis:
+            formatted += f"\n💡 Research Hypothesis:\n{'-'*40}\n"
+            formatted += response.research_hypothesis + "\n"
         
         # Metadata
         formatted += f"\n📊 Analysis Metadata:\n{'-'*40}\n"
-        formatted += f"Papers retrieved: {response.metadata.get('num_papers_retrieved', 0)}\n"
-        formatted += f"Sources used: {', '.join(response.metadata.get('sources_used', []))}\n"
-        formatted += f"Processing time: {response.metadata.get('processing_time_seconds', 0):.2f} seconds\n"
-        formatted += f"Average relevance: {response.metadata.get('average_relevance_score', 0):.3f}\n"
+        formatted += f"Papers retrieved: {len(response.papers)}\n"
+        formatted += f"Processing time: {response.processing_metadata.get('processing_time_seconds', 0):.2f} seconds\n"
+        formatted += f"LLM model: {response.processing_metadata.get('llm_model', 'N/A')}\n"
+        formatted += f"Search type: {response.processing_metadata.get('search_type', 'local')}\n"
         
         return formatted
     
     async def handle_search(self, query: str, sources: List[str] = None):
         """Handle search command"""
         logger.info(f"Searching for: {query}")
-        results = await self.pipeline.search_literature(query, sources)
+        results = await self.search_engine.search_helpful_papers(query, top_k=20)
         print(self.format_search_results(results))
         self.last_results = results
         return results
@@ -140,8 +150,8 @@ Examples:
     async def handle_full_analysis(self, query: str, sources: List[str] = None):
         """Handle full analysis command"""
         logger.info(f"Performing full analysis for: {query}")
-        response = await self.pipeline.process_query(query, sources)
-        print(self.format_response(response))
+        response = await self.pipeline.research_and_analyze(query, sources)
+        print(self.format_analysis_response(response))
         self.last_response = response
         return response
     
